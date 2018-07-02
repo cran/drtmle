@@ -10,33 +10,33 @@ adaptive_iptw(W, A, Y, DeltaY = as.numeric(!is.na(Y)),
   \%in\% c(0, 1))) {     stats::binomial() } else {     stats::gaussian() },
   a_0 = unique(A[!is.na(A)]), SL_g = NULL, glm_g = NULL, SL_Qr = NULL,
   glm_Qr = NULL, returnModels = TRUE, verbose = FALSE, maxIter = 2,
-  tolIC = 1/length(Y), tolg = 0.01, cvFolds = 1, parallel = FALSE, ...)
+  tolIC = 1/length(Y), tolg = 0.01, cvFolds = 1, parallel = FALSE,
+  future_hpc = NULL, gn = NULL, ...)
 }
 \arguments{
 \item{W}{A \code{data.frame} of named covariates}
 
-\item{A}{A \code{numeric} vector of binary treatment assignment (assumed to be equal to 0 or
-1)}
+\item{A}{A \code{numeric} vector of binary treatment assignment (assumed to
+be equal to 0 or 1)}
 
 \item{Y}{A \code{numeric} numeric of continuous or binary outcomes.}
 
-\item{DeltaY}{A \code{numeric} indicator of missing outcome (assumed to be equal to 0 if
-missing 1 if observed)}
+\item{DeltaY}{A \code{numeric} indicator of missing outcome (assumed to be
+equal to 0 if missing 1 if observed)}
 
-\item{DeltaA}{A \code{numeric} indicator of missing treatment (assumed to be equal to 0 if
-missing 1 if observed)}
+\item{DeltaA}{A \code{numeric} indicator of missing treatment (assumed to be
+equal to 0 if missing 1 if observed)}
 
-\item{stratify}{A \code{boolean} indicating whether to estimate the missing
-outcome regression separately
-for observations with different levels of \code{A} (if \code{TRUE}) or to
-pool across \code{A} (if \code{FALSE}).}
+\item{stratify}{A \code{logical} indicating whether to estimate the missing
+outcome regression separately for observations with different levels of
+\code{A} (if \code{TRUE}) or to pool across \code{A} (if \code{FALSE}).}
 
 \item{family}{A \code{family} object equal to either \code{binomial()} or
 \code{gaussian()}, to be passed to the \code{SuperLearner} or \code{glm}
 function.}
 
-\item{a_0}{A vector of \code{numeric} treatment values at which to return marginal
-mean estimates.}
+\item{a_0}{A vector of \code{numeric} treatment values at which to return
+marginal mean estimates.}
 
 \item{SL_g}{A vector of characters describing the super learner library to be
 used for each of the propensity score regressions (\code{DeltaA}, \code{A},
@@ -58,10 +58,10 @@ library to be used for the reduced-dimension outcome regression.}
 \code{glm} for reduced-dimension outcome regression. Ignored if
 \code{SL_Qr!=NULL}. The formula should use the variable name \code{'gn'}.}
 
-\item{returnModels}{A boolean indicating whether to return model fits for the
+\item{returnModels}{A logical indicating whether to return model fits for the
 propensity score and reduced-dimension regressions.}
 
-\item{verbose}{A boolean indicating whether to print status updates.}
+\item{verbose}{A logical indicating whether to print status updates.}
 
 \item{maxIter}{A numeric that sets the maximum number of iterations the TMLE
 can perform in its fluctuation step.}
@@ -76,12 +76,24 @@ propensity score.}
 cross-validated fitting of nuisance parameters. If \code{cvFolds = 1}, no
 cross-validation is used.}
 
-\item{parallel}{A boolean indicating whether to use parallelization based on
-\code{future} to estimate nuisance
-parameters in parallel. Only useful if \code{cvFolds > 1}. By default, a
-\code{multiprocess} evaluation scheme is invoked, using forked R processes
-(if supported on the OS) and background R sessions otherwise. Users may also
-register their own backends using the \code{future.batchtools} package.}
+\item{parallel}{A logical indicating whether to use parallelization based on
+\code{future} to estimate nuisance parameters in parallel. Only useful if
+\code{cvFolds > 1}. By default, a \code{multiprocess} evaluation scheme is
+invoked, using forked R processes (if supported on the OS) and background R
+sessions otherwise. Users may also register their own backends using the
+\code{future.batchtools} package.}
+
+\item{future_hpc}{A character string identifying a high-performance computing
+backend to be used with parallelization. This should match exactly one of
+the options available from the \code{future.batchtools} package.}
+
+\item{gn}{An optional list of propensity score estimates. If specified, the
+function will ignore the nuisance parameter estimation specified by
+\code{SL_g} and \code{glm_g}. The entries in the list should correspond to
+the propensity for the observed values of \code{W}, with order determined by
+the input to \code{a_0} (e.g., if \code{a_0 = c(0,1)} then \code{gn[[1]]}
+should be propensity of \code{A} = 0 and \code{gn[[2]]} should be propensity
+of \code{A} = 1).}
 
 \item{...}{Other options (not currently used).}
 }

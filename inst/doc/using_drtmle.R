@@ -34,8 +34,8 @@ library(SuperLearner)
 sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                  SL_g = c("SL.glm", "SL.step.interaction","SL.mean"),
                  SL_Q = c("SL.glm", "SL.step.interaction","SL.mean"),
-                 SL_gr = c("SL.glm", "SL.gam", "SL.mean"),
-                 SL_Qr = c("SL.glm", "SL.gam", "SL.mean"),
+                 SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
+                 SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
                  stratify = FALSE)
 sl_fit
 
@@ -96,7 +96,7 @@ glm_fit_wNAs
 ## ---- cache = TRUE-------------------------------------------------------
 mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          SL_g = list(DeltaA = "SL.glm", A = "SL.npreg",
-                         DeltaY = c("SL.glm", "SL.mean", "SL.gam")),
+                         DeltaY = c("SL.glm", "SL.mean", "SL.earth")),
                          glm_Q = "W1 + W2*A", glm_Qr = "gn",
                          glm_gr = "Qn", family = binomial())
 mixed_fit_wNAs
@@ -153,10 +153,10 @@ ci(glm_fit_multiA, contrast = riskRatio_2v0)
 
 ## ---- cache = TRUE-------------------------------------------------------
 cv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                    SL_g = c("SL.glm", "SL.glm.interaction", "SL.gam"),
-                    SL_Q = c("SL.glm", "SL.glm.interaction", "SL.gam"),
-                    SL_gr = c("SL.glm", "SL.gam", "SL.mean"),
-                    SL_Qr = c("SL.glm", "SL.gam", "SL.mean"),
+                    SL_g = c("SL.glm", "SL.glm.interaction", "SL.earth"),
+                    SL_Q = c("SL.glm", "SL.glm.interaction", "SL.earth"),
+                    SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
+                    SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
                     stratify = FALSE, cvFolds = 2, a_0 = c(0, 1, 2))
 cv_sl_fit
 
@@ -167,10 +167,10 @@ cl <- makeCluster(2, type = "SOCK")
 plan(cluster, workers = cl)
 clusterEvalQ(cl, library("SuperLearner"))
 pcv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                     SL_g = c("SL.glm", "SL.glm.interaction","SL.gam"),
-                     SL_Q = c("SL.glm", "SL.glm.interaction","SL.gam"),
-                     SL_gr = c("SL.glm", "SL.gam", "SL.mean"),
-                     SL_Qr = c("SL.glm", "SL.gam", "SL.mean"),
+                     SL_g = c("SL.glm", "SL.glm.interaction","SL.earth"),
+                     SL_Q = c("SL.glm", "SL.glm.interaction","SL.earth"),
+                     SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
+                     SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
                      stratify = FALSE, a_0 = c(0,1,2),
                      cvFolds = 2, parallel = TRUE)
 pcv_sl_fit
@@ -178,7 +178,7 @@ pcv_sl_fit
 ## ---- cache = TRUE-------------------------------------------------------
 npreg_iptw_multiA <- adaptive_iptw(W = W, A = A, Y = Y, stratify = FALSE,
                                    SL_g = "SL.npreg", SL_Qr = "SL.npreg",
-                                   family = binomial(), a_0 = c(0,1,2))
+                                   family = binomial(), a_0 = c(0, 1, 2))
 npreg_iptw_multiA
 
 ## ------------------------------------------------------------------------

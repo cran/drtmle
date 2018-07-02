@@ -7,7 +7,7 @@
 #' @param ... Other arguments (not used)
 #' @export
 #' @method print drtmle
-
+#
 print.drtmle <- function(x, ...) {
   tmp <- list(
     est = cbind(x$drtmle$est),
@@ -30,7 +30,7 @@ print.drtmle <- function(x, ...) {
 #' @param ... Other arguments (not used)
 #' @export
 #' @method print adaptive_iptw
-
+#
 print.adaptive_iptw <- function(x, ...) {
   tmp <- list(
     est = cbind(x$iptw_tmle$est),
@@ -54,7 +54,7 @@ print.adaptive_iptw <- function(x, ...) {
 #' @param digits Number of digits to round to
 #' @param ... Other options (not currently used)
 #' @method print ci.drtmle
-
+#
 print.ci.drtmle <- function(x, digits = 3, ...) {
   tmp <- lapply(x, round, digits = digits)
   print(tmp)
@@ -67,7 +67,7 @@ print.ci.drtmle <- function(x, digits = 3, ...) {
 #' @param digits Number of digits to round to
 #' @param ... Other options (not currently used)
 #' @method print ci.adaptive_iptw
-
+#
 print.ci.adaptive_iptw <- function(x, digits = 3, ...) {
   tmp <- lapply(x, round, digits = digits)
   print(tmp)
@@ -80,7 +80,7 @@ print.ci.adaptive_iptw <- function(x, digits = 3, ...) {
 #' @param digits Number of digits to round to
 #' @param ... Other options (not currently used)
 #' @method print wald_test.drtmle
-
+#
 print.wald_test.drtmle <- function(x, digits = 3, ...) {
   tmp <- lapply(x, round, digits = digits)
   print(tmp)
@@ -93,7 +93,7 @@ print.wald_test.drtmle <- function(x, digits = 3, ...) {
 #' @param digits Number of digits to round to
 #' @param ... Other options (not currently used)
 #' @method print wald_test.adaptive_iptw
-
+#
 print.wald_test.adaptive_iptw <- function(x, digits = 3, ...) {
   tmp <- lapply(x, round, digits = digits)
   print(tmp)
@@ -108,9 +108,10 @@ print.wald_test.adaptive_iptw <- function(x, digits = 3, ...) {
 #'
 #' @param x An object of class \code{"drtmle"}
 #' @param nPoints Number of points to plot lines (increase for less bumpy plot,
-#' decrease for faster evaluation).
+#'  decrease for faster evaluation).
 #' @param a_0 For what value of a_0 should the plot be made for?
-#' @param ... More arguments (not currently used) TO DO: Pass to plot? to lines?
+#' @param ask Boolean indicating whether R should ask to show each plot
+#' @param ... More arguments passed to \code{plot}
 #' @export
 #' @method plot drtmle
 #' @importFrom graphics axis lines par plot
@@ -133,11 +134,12 @@ print.wald_test.adaptive_iptw <- function(x, digits = 3, ...) {
 #'                maxIter = 1, returnModels = TRUE)
 #' # plot the reduced-dimension regression fits (not run)
 #' \dontrun{plot(fit1)}
-
+#
 plot.drtmle <- function(x, nPoints = 500,
+                        ask = TRUE,
                         a_0 = x$a_0[1], ...) {
   # ask to see next plot
-  par(ask = TRUE)
+  par(ask = ask)
   # check if returnModels is null
   if (is.null(x$QrnMod) & is.null(x$grnMod)) {
     stop("Plot function only works if returnModels = TRUE.")
@@ -181,10 +183,11 @@ plot.drtmle <- function(x, nPoints = 500,
   yl <- range(unlist(fit_Qrn))
   # set up empty plot
   plot(
-    0, type = "n", xlim = xl, ylim = yl,
+    0,
+    type = "n", xlim = xl, ylim = yl,
     xaxt = "n", yaxt = "n", bty = "n",
     xlab = expression(g[n](W)),
-    ylab = expression("E[Y-" * Q[n](W) * " | " * g[n](W) * "]")
+    ylab = expression("E[Y-" * Q[n](W) * " | " * g[n](W) * "]"), ...
   )
   # add axes
   axis(side = 1)
@@ -225,10 +228,12 @@ plot.drtmle <- function(x, nPoints = 500,
     yl <- range(unlist(fit_grn1))
     # set up empty plot
     plot(
-      0, type = "n", xlim = xl, ylim = yl,
+      0,
+      type = "n", xlim = xl, ylim = yl,
       xaxt = "n", yaxt = "n", bty = "n",
       xlab = expression(Q[n](W)),
-      ylab = expression("E[{" * A - g[n](W) * "} / " * g[n](W) * "} | " * Q[n](W) * "]")
+      ylab = expression("E[{" * A - g[n](W) * "} / " * g[n](W) * " | " *
+        Q[n](W) * "]", ...)
     )
     # add axes
     axis(side = 1)
@@ -258,10 +263,12 @@ plot.drtmle <- function(x, nPoints = 500,
     yl <- range(unlist(fit_grn2))
     # set up empty plot
     plot(
-      0, type = "n", xlim = xl, ylim = yl,
+      0,
+      type = "n", xlim = xl, ylim = yl,
       xaxt = "n", yaxt = "n", bty = "n",
       xlab = expression(Q[n](W)),
-      ylab = expression("E[A | " * Q[n](W) * "]")
+      ylab = expression("E[A | " * Q[n](W) * "]"),
+      ...
     )
     # add axes
     axis(side = 1)

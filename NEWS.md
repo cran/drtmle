@@ -1,5 +1,9 @@
-January 3, 2018
-* Version 1.0.2 released on GitHub and submitted to CRAN
+July 2, 2018
+* Version 1.0.3 released on GitHub and CRAN
+* Fix warnings on CRAN builds
+
+February 5, 2018
+* Version 1.0.2 released on GitHub and CRAN
 * Replace foreach parallelization with future
 * More robust super learner methods included 
 * Fix test to pass build with long doubles removed
