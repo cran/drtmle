@@ -49,6 +49,76 @@ npreg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     stratify = TRUE)
 npreg_fit
 
+## ---- cache = TRUE, message = FALSE--------------------------------------
+# fit a GLM for outcome regression outside of drtmle
+out_glm_fit <- glm(Y ~ . , data = data.frame(A = A, W), family = binomial())
+
+# generate Qn list
+Qn10 <- list(
+  # first entry is predicted values setting A = 1
+  predict(out_glm_fit, newdata = data.frame(A = 1, W), type = "response"),
+  # second entry is predicted values setting A = 0
+  predict(out_glm_fit, newdata = data.frame(A = 0, W), type = "response")
+)
+
+# pass this list to drtmle to avoid internal estimation of 
+# outcome regression (note propensity score and reduced-dimension
+# regressions are still estimated internally)
+out_fit1 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                  glm_g = ".", glm_Qr = "gn", glm_gr = "Qn", Qn = Qn10,
+                  # crucial to set a_0 to match Qn's construction!
+                  a_0 = c(1,0))
+out_fit1
+
+# to be completely thorough let's re-order Qn10 and re-run
+Qn01 <- list(Qn10[[2]], Qn10[[1]])
+
+out_fit2 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                  glm_g = ".", glm_Qr = "gn", glm_gr = "Qn", 
+                  # use re-ordered Qn list
+                  Qn = Qn01,
+                  # a_0 has to be reordered to match Qn01!
+                  a_0 = c(0,1))
+# should be the same as out_fit1, but re-ordered
+out_fit2
+
+## ---- cache = TRUE, message = FALSE--------------------------------------
+# fit a GLM for propensity score outside of drtmle
+out_glm_fit <- glm(A ~ . , data = data.frame(W), family = binomial())
+
+# get P(A = 1 | W) by calling predict
+gn1W <- predict(out_glm_fit, newdata = data.frame(W), type = "response")
+
+# generate gn list
+gn10 <- list(
+  # first entry is P(A = 1 | W)
+  gn1W,
+  # second entry is P(A = 0 | W) = 1 - P(A = 1 | W)
+  1 - gn1W
+)
+
+# pass this list to drtmle to avoid internal estimation of 
+# propensity score (note reduced-dimension regressions are 
+# still estimated internally)
+out_fit3 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                   glm_Qr = "gn", glm_gr = "Qn", 
+                   Qn = Qn10, gn = gn10, 
+                   # crucial to set a_0 to match Qn and gn's construction!
+                   a_0 = c(1,0))
+out_fit3
+
+# to be completely thorough let's re-order gn10 and re-run
+gn01 <- list(gn10[[2]], gn10[[1]])
+
+out_fit4 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                   glm_Qr = "gn", glm_gr = "Qn", 
+                   # use re-ordered Qn/gn list
+                   Qn = Qn01, gn = gn01, 
+                   # a_0 has to be reordered to match Qn01!
+                   a_0 = c(0,1))
+# should be the same as out_fit3, but re-ordered
+out_fit4
+
 ## ------------------------------------------------------------------------
 ci(npreg_fit)
 
@@ -100,6 +170,55 @@ mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          glm_Q = "W1 + W2*A", glm_Qr = "gn",
                          glm_gr = "Qn", family = binomial())
 mixed_fit_wNAs
+
+## ---- cache = TRUE-------------------------------------------------------
+# first regress indicator of missing A on W
+fit_DeltaA <- glm(DeltaA ~ . , data = W, family = binomial())
+
+# get estimated propensity for observing A
+ps_DeltaA <- predict(fit_DeltaA, type = "response")
+
+# now regress A on W | DeltaA = 1
+fit_A <- glm(A[DeltaA == 1] ~ . , data = W[DeltaA == 1, , drop = FALSE], 
+             family = binomial())
+
+# get estimated propensity for receiving A = 1
+ps_A1 <- predict(fit_A, newdata = W, type = "response")
+# propensity for receiving A = 0
+ps_A0 <- 1 - ps_A1
+
+# now regress DeltaY on A + W | DeltaA = 1. Here we are pooling over 
+# values of A (i.e., this is what drtmle does if stratify = FALSE). 
+# We could also fit two regressions, one of DeltaY ~ W | DeltaA = 1, A = 1
+# and one of DeltaY ~ W | DeltaA = 1, A = 0 (this is what drtmle does if
+# stratify = TRUE). 
+fit_DeltaY <- glm(DeltaY[DeltaA == 1] ~ . , 
+                  data = data.frame(A = A, W)[DeltaA == 1, ], 
+                  family = binomial())
+
+# get estimated propensity for observing outcome if A = 1
+ps_DeltaY_A1 <- predict(fit_DeltaY, newdata = data.frame(A = 1, W), 
+                        type = "response")
+
+# get estimated propensity for observing outcome if A = 0
+ps_DeltaY_A0 <- predict(fit_DeltaY, newdata = data.frame(A = 0, W), 
+                        type = "response")
+
+# now combine all results into a single propensity score 
+gn <- list(
+  # propensity for DeltaA = 1, A = 1, DeltaY = 1
+  ps_DeltaA * ps_A1 * ps_DeltaY_A1,
+  # propensity for DeltaA = 1, A = 0, DeltaY = 1
+  ps_DeltaA * ps_A0 * ps_DeltaY_A0
+)
+
+# pass in this gn to drtmle
+out_fit_ps <-  drtmle(W = W, A = A, Y = Y, stratify = FALSE,
+                      # make sure a_0/gn are ordered properly!
+                      gn = gn, a_0 = c(1, 0),
+                      glm_Q = "W1 + W2*A", glm_Qr = "gn",
+                      glm_gr = "Qn", family = binomial())
+out_fit_ps
 
 ## ---- echo = FALSE, message = FALSE--------------------------------------
 library(drtmle)

@@ -206,6 +206,7 @@ estimators. One example is the augmented IPTW (AIPTW) estimator
 \psi_{n,AIPTW}(a) = \psi_{n,IPTW}(a) + \frac{1}{n} \sum\limits_{i=1}^n \biggl\{
 1 - \frac{I(A_i = a)}{g_n(a \mid W_i)} \biggr\} \  \bar{Q}_n(a, W_i) \ ,
 \end{equation*}
+
 which adds an augmentation term to the IPTW estimator. Equivalently, the
 estimator can be viewed as adding an augmentation to the GCOMP estimator
 \begin{equation} \label{oneStepEst}
@@ -263,7 +264,7 @@ equations. These equations involve additional regression parameters that we
 refer to as the reduced outcome regression (R-OR) and the reduced propensity
 score (R-PS), defined respectively as \begin{align*}
   \bar{Q}_{r,0n}(a,w) &:= E_{0}\bigl\{Y - \bar{Q}_n(W) \mid A = a,
-  g_n(W)=g_n(w)\bigr\} \\
+  g_n(W)=g_n(w)\bigr\} \ , \ \mbox{and} \\
   g_{r,0n}(a \mid w) &:= Pr_0\left\{A = a \mid \bar{Q}_n(W)=\bar{Q}_n(w),
   g_n(W)=g_n(w)\right\} \ .
 \end{align*}
@@ -299,11 +300,13 @@ to achieve this form of double-robustness. In particular, they formulated an
 alternative version of the R-PS, \begin{align*}
 g_{r,0,1}(a \mid w) := Pr_0\{A = a \mid \bar{Q}_n(W) = \bar{Q}_n(w) \} \ ,
 \end{align*}
+
 which we refer to as R-PS1. They also introduced an additional regression of a
 weighted residual from the PS on the OR, \begin{align*}
 g_{r,0,2}(a \mid w) := E_0\biggl\{\frac{I(A = a) - g_n(a \mid W)}{g_n(a \mid
 W)} \ \bigg\vert \ \bar{Q}_n(W) = \bar{Q}_n(w) \biggr\} \ ,
 \end{align*}
+
 which we refer to as R-PS2. The key feature of R-PS1 and R-PS2 is that they are
 both univariate regressions, while R-PS is a bivariate regression. Benkeser and
 colleagues suggested that this may make R-PS1 and R-PS2 easier to estimate
@@ -400,7 +403,8 @@ In fact, there are three ways to estimate each of the regression parameters:
 generalized linear models, super learning, and a user-specified estimation
 technique. We demonstrate each of these approaches in turn on a simple
 simulated data set. The true parameter values of interest are $\psi_0(0)=$ `r
-round(EY0,2)` and $\psi_0(1)=$ `r round(EY1, 2)`.
+round(EY0, 2)` and $\psi_0(1)=$ `r round(EY1, 2)`.
+
 ```{r}
 set.seed(1234)
 n <- 200
@@ -545,6 +549,98 @@ npreg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     stratify = TRUE)
 npreg_fit
 ```
+
+The `drtmle` package also allows users to pass in their own estimated OR and PS
+via the `Qn` and `gn` options, respectively. 
+If `Qn` is specified by the user, `drtmle` will ignore the nuisance parameter 
+estimation routines specified by `SL_Q` and `glm_Q` -- similarly for `gn` and
+`SL_g`, `glm_g`. As noted in the package documentation, there is a specific format 
+necessary for inputting `Qn` and `gn`. For `Qn`, the entries in the list should 
+correspond to the OR evaluated at A and the observed values of `W`, 
+with order determined by the input to `a_0`. For example, if `a_0 = c(0, 1)` then 
+`Qn[[1]]` should be OR at $A = 0$ and `Qn[[2]]` should be outcome 
+regression at $A = 1$. The example below illustrates this concept.
+
+```{r, cache = TRUE, message = FALSE}
+# fit a GLM for outcome regression outside of drtmle
+out_glm_fit <- glm(Y ~ . , data = data.frame(A = A, W), family = binomial())
+
+# generate Qn list
+Qn10 <- list(
+  # first entry is predicted values setting A = 1
+  predict(out_glm_fit, newdata = data.frame(A = 1, W), type = "response"),
+  # second entry is predicted values setting A = 0
+  predict(out_glm_fit, newdata = data.frame(A = 0, W), type = "response")
+)
+
+# pass this list to drtmle to avoid internal estimation of 
+# outcome regression (note propensity score and reduced-dimension
+# regressions are still estimated internally)
+out_fit1 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                  glm_g = ".", glm_Qr = "gn", glm_gr = "Qn", Qn = Qn10,
+                  # crucial to set a_0 to match Qn's construction!
+                  a_0 = c(1,0))
+out_fit1
+
+# to be completely thorough let's re-order Qn10 and re-run
+Qn01 <- list(Qn10[[2]], Qn10[[1]])
+
+out_fit2 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                  glm_g = ".", glm_Qr = "gn", glm_gr = "Qn", 
+                  # use re-ordered Qn list
+                  Qn = Qn01,
+                  # a_0 has to be reordered to match Qn01!
+                  a_0 = c(0,1))
+# should be the same as out_fit1, but re-ordered
+out_fit2
+```
+
+Similarly, for `gn` we need to pass in properly ordered lists. For example, 
+if `a_0 = c(0, 1)` then `gn[[1]]` should be propensity for receiving $A = 0$ 
+and `gn[[2]]` should be the propensity for receiving $A = 1$. The example below 
+illustrates this concept.
+
+```{r, cache = TRUE, message = FALSE}
+# fit a GLM for propensity score outside of drtmle
+out_glm_fit <- glm(A ~ . , data = data.frame(W), family = binomial())
+
+# get P(A = 1 | W) by calling predict
+gn1W <- predict(out_glm_fit, newdata = data.frame(W), type = "response")
+
+# generate gn list
+gn10 <- list(
+  # first entry is P(A = 1 | W)
+  gn1W,
+  # second entry is P(A = 0 | W) = 1 - P(A = 1 | W)
+  1 - gn1W
+)
+
+# pass this list to drtmle to avoid internal estimation of 
+# propensity score (note reduced-dimension regressions are 
+# still estimated internally)
+out_fit3 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                   glm_Qr = "gn", glm_gr = "Qn", 
+                   Qn = Qn10, gn = gn10, 
+                   # crucial to set a_0 to match Qn and gn's construction!
+                   a_0 = c(1,0))
+out_fit3
+
+# to be completely thorough let's re-order gn10 and re-run
+gn01 <- list(gn10[[2]], gn10[[1]])
+
+out_fit4 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                   glm_Qr = "gn", glm_gr = "Qn", 
+                   # use re-ordered Qn/gn list
+                   Qn = Qn01, gn = gn01, 
+                   # a_0 has to be reordered to match Qn01!
+                   a_0 = c(0,1))
+# should be the same as out_fit3, but re-ordered
+out_fit4
+```
+
+This flexibility allows users to use any regression technique to externally
+obtain initial estimates of nuisance parameters. The key step is making sure
+that the ordering of `Qn` and `gn` is consistent with `a_0`. 
 
 ## Confidence intervals \label{confidence_intervals}
 
@@ -727,6 +823,63 @@ mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          glm_Q = "W1 + W2*A", glm_Qr = "gn",
                          glm_gr = "Qn", family = binomial())
 mixed_fit_wNAs
+```
+
+We can also fit the PS regressions externally and pass in via `gn`, though this
+process is slightly more complicated than when no missing data are present. 
+The basic idea is to fit one regression for (i) the indicator of missing $A$, 
+(ii) $A$ itself, and (iii) the indicator of missing the outcome. The three PS's 
+are then multiplied together and an appropriately ordered list is constructed
+as before. We illustrate with the following simple example. 
+
+```{r, cache = TRUE}
+# first regress indicator of missing A on W
+fit_DeltaA <- glm(DeltaA ~ . , data = W, family = binomial())
+
+# get estimated propensity for observing A
+ps_DeltaA <- predict(fit_DeltaA, type = "response")
+
+# now regress A on W | DeltaA = 1
+fit_A <- glm(A[DeltaA == 1] ~ . , data = W[DeltaA == 1, , drop = FALSE], 
+             family = binomial())
+
+# get estimated propensity for receiving A = 1
+ps_A1 <- predict(fit_A, newdata = W, type = "response")
+# propensity for receiving A = 0
+ps_A0 <- 1 - ps_A1
+
+# now regress DeltaY on A + W | DeltaA = 1. Here we are pooling over 
+# values of A (i.e., this is what drtmle does if stratify = FALSE). 
+# We could also fit two regressions, one of DeltaY ~ W | DeltaA = 1, A = 1
+# and one of DeltaY ~ W | DeltaA = 1, A = 0 (this is what drtmle does if
+# stratify = TRUE). 
+fit_DeltaY <- glm(DeltaY[DeltaA == 1] ~ . , 
+                  data = data.frame(A = A, W)[DeltaA == 1, ], 
+                  family = binomial())
+
+# get estimated propensity for observing outcome if A = 1
+ps_DeltaY_A1 <- predict(fit_DeltaY, newdata = data.frame(A = 1, W), 
+                        type = "response")
+
+# get estimated propensity for observing outcome if A = 0
+ps_DeltaY_A0 <- predict(fit_DeltaY, newdata = data.frame(A = 0, W), 
+                        type = "response")
+
+# now combine all results into a single propensity score 
+gn <- list(
+  # propensity for DeltaA = 1, A = 1, DeltaY = 1
+  ps_DeltaA * ps_A1 * ps_DeltaY_A1,
+  # propensity for DeltaA = 1, A = 0, DeltaY = 1
+  ps_DeltaA * ps_A0 * ps_DeltaY_A0
+)
+
+# pass in this gn to drtmle
+out_fit_ps <-  drtmle(W = W, A = A, Y = Y, stratify = FALSE,
+                      # make sure a_0/gn are ordered properly!
+                      gn = gn, a_0 = c(1, 0),
+                      glm_Q = "W1 + W2*A", glm_Qr = "gn",
+                      glm_gr = "Qn", family = binomial())
+out_fit_ps
 ```
 
 ## Multi-level treatments
