@@ -4,16 +4,42 @@
 \alias{drtmle}
 \title{TMLE estimate of the average treatment effect with doubly-robust inference}
 \usage{
-drtmle(Y, A, W, DeltaA = as.numeric(!is.na(A)),
-  DeltaY = as.numeric(!is.na(Y)), a_0 = unique(A[!is.na(A)]),
-  family = if (all(Y \%in\% c(0, 1))) {     stats::binomial() } else {   
-   stats::gaussian() }, stratify = TRUE, SL_Q = NULL, SL_g = NULL,
-  SL_Qr = NULL, SL_gr = NULL, glm_Q = NULL, glm_g = NULL,
-  glm_Qr = NULL, glm_gr = NULL, guard = c("Q", "g"),
-  reduction = "univariate", returnModels = FALSE, cvFolds = 1,
-  maxIter = 3, tolIC = 1/length(Y), tolg = 0.01, verbose = FALSE,
-  Qsteps = 2, parallel = FALSE, future_hpc = NULL, Qn = NULL,
-  gn = NULL, use_future = TRUE, ...)
+drtmle(
+  Y,
+  A,
+  W,
+  DeltaA = as.numeric(!is.na(A)),
+  DeltaY = as.numeric(!is.na(Y)),
+  a_0 = unique(A[!is.na(A)]),
+  family = if (all(Y \%in\% c(0, 1))) {     stats::binomial() } else {    
+    stats::gaussian() },
+  stratify = TRUE,
+  SL_Q = NULL,
+  SL_g = NULL,
+  SL_Qr = NULL,
+  SL_gr = NULL,
+  n_SL = 1,
+  glm_Q = NULL,
+  glm_g = NULL,
+  glm_Qr = NULL,
+  glm_gr = NULL,
+  adapt_g = FALSE,
+  guard = c("Q", "g"),
+  reduction = "univariate",
+  returnModels = FALSE,
+  cvFolds = 1,
+  maxIter = 3,
+  tolIC = 1/length(Y),
+  tolg = 0.01,
+  verbose = FALSE,
+  Qsteps = 2,
+  parallel = FALSE,
+  future_hpc = NULL,
+  Qn = NULL,
+  gn = NULL,
+  use_future = TRUE,
+  ...
+)
 }
 \arguments{
 \item{Y}{A \code{numeric} continuous or binary outcomes.}
@@ -41,20 +67,24 @@ to pool across \code{A} (if \code{FALSE}).}
 
 \item{SL_Q}{A vector of characters or a list describing the Super Learner
 library to be used for the outcome regression. See
-\code{link{SuperLearner::SuperLearner}} for details.}
+\code{\link[SuperLearner]{SuperLearner}} for details.}
 
 \item{SL_g}{A vector of characters describing the super learner library to be
 used for each of the propensity score regressions (\code{DeltaA}, \code{A},
 and \code{DeltaY}). To use the same library for each of the regressions (or
 if there is no missing data in \code{A} nor \code{Y}), a single library may
-be input. See \code{link{SuperLearner::SuperLearner}} for details on how
+be input. See \code{\link[SuperLearner]{SuperLearner}} for details on how
 super learner libraries can be specified.}
 
 \item{SL_Qr}{A vector of characters or a list describing the Super Learner
 library to be used for the reduced-dimension outcome regression.}
 
 \item{SL_gr}{A vector of characters or a list describing the Super Learner
-library to be used for the second reduced-dimension propensity score.}
+library to be used for the reduced-dimension propensity score.}
+
+\item{n_SL}{Number of repeated Super Learners to run (default 1) for the
+each nuisance parameter. Repeat Super Learners more times to obtain more stable
+inference.}
 
 \item{glm_Q}{A character describing a formula to be used in the call to
 \code{glm} for the outcome regression. Ignored if \code{SL_Q!=NULL}.}
@@ -62,8 +92,10 @@ library to be used for the second reduced-dimension propensity score.}
 \item{glm_g}{A list of characters describing the formulas to be used
 for each of the propensity score regressions (\code{DeltaA}, \code{A}, and
 \code{DeltaY}). To use the same formula for each of the regressions (or if
-there is no missing data in \code{A} nor \code{Y}), a single character
-formula may be input.}
+there are no missing data in \code{A} nor \code{Y}), a single character
+formula may be input. In general the formulas can reference any variable in 
+\code{colnames(W)}, unless \code{adapt_g = TRUE} in which case the formulas
+should reference variables \code{QaW} where \code{a} takes values in \code{a_0}.}
 
 \item{glm_Qr}{A character describing a formula to be used in the call to
 \code{glm} for reduced-dimension outcome regression. Ignored if
@@ -74,6 +106,11 @@ formula may be input.}
 \code{SL_gr!=NULL}. The formula should use the variable name \code{'Qn'} and
 \code{'gn'} if \code{reduction='bivariate'} and \code{'Qn'} otherwise.}
 
+\item{adapt_g}{A boolean indicating whether the propensity score should be 
+outcome adaptive. If \code{TRUE} then the propensity score is estimated as the
+regression of \code{A} onto covariates \code{QaW} for \code{a} in each value
+contained in \code{a_0}. See vignette for more details.}
+
 \item{guard}{A character vector indicating what pattern of misspecifications
 to guard against. If \code{guard} contains \code{"Q"}, then the TMLE guards
 against misspecification of the outcome regression by estimating the
@@ -81,7 +118,8 @@ reduced-dimension outcome regression specified by \code{glm_Qr} or
 \code{SL_Qr}. If \code{guard} contains \code{"g"} then the TMLE
 (additionally) guards against misspecification of the propensity score by
 estimating the reduced-dimension propensity score specified by \code{glm_gr}
-or \code{SL_gr}.}
+or \code{SL_gr}. If \code{guard} is set to \code{NULL}, then only standard TMLE
+and one-step estimators are computed.}
 
 \item{reduction}{A character equal to \code{"univariate"} for a univariate
 misspecification correction (default) or \code{"bivariate"} for the
@@ -200,17 +238,19 @@ library(SuperLearner)
 set.seed(123456)
 n <- 100
 W <- data.frame(W1 = runif(n), W2 = rnorm(n))
-A <- rbinom(n,1,plogis(W$W1 - W$W2))
-Y <- rbinom(n, 1, plogis(W$W1*W$W2*A))
+A <- rbinom(n, 1, plogis(W$W1 - W$W2))
+Y <- rbinom(n, 1, plogis(W$W1 * W$W2 * A))
 # A quick example of drtmle:
 # We note that more flexible super learner libraries
 # are available, and that we recommend the user use more flexible
 # libraries for SL_Qr and SL_gr for general use.
-fit1 <- drtmle(W = W, A = A, Y = Y, a_0 = c(1,0),
-               family=binomial(),
-               stratify=FALSE,
-               SL_Q = c("SL.glm", "SL.mean", "SL.glm.interaction"),
-               SL_g = c("SL.glm", "SL.mean", "SL.glm.interaction"),
-               SL_Qr = "SL.glm",
-               SL_gr = "SL.glm", maxIter = 1)
+fit1 <- drtmle(
+  W = W, A = A, Y = Y, a_0 = c(1, 0),
+  family = binomial(),
+  stratify = FALSE,
+  SL_Q = c("SL.glm", "SL.mean", "SL.glm.interaction"),
+  SL_g = c("SL.glm", "SL.mean", "SL.glm.interaction"),
+  SL_Qr = "SL.glm",
+  SL_gr = "SL.glm", maxIter = 1
+)
 }

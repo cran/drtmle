@@ -1,3 +1,6 @@
+## ----global_options, include=FALSE---------------------------------------
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
 ## ---- echo = FALSE, message = FALSE--------------------------------------
 library(drtmle)
 set.seed(1234)
@@ -30,12 +33,12 @@ glm_fit_biv
 ## ---- echo = FALSE, message = FALSE--------------------------------------
 library(SuperLearner)
 
-## ---- message = FALSE, cache = TRUE--------------------------------------
+## ---- warning = FALSE, message = FALSE, cache = TRUE---------------------
 sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                 SL_g = c("SL.glm", "SL.step.interaction","SL.mean"),
-                 SL_Q = c("SL.glm", "SL.step.interaction","SL.mean"),
-                 SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
-                 SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
+                 SL_g = c("SL.glm","SL.mean"),
+                 SL_Q = c("SL.glm","SL.mean"),
+                 SL_gr = c("SL.glm", "SL.earth"),
+                 SL_Qr = c("SL.glm", "SL.earth"),
                  stratify = FALSE)
 sl_fit
 
@@ -48,6 +51,27 @@ npreg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     SL_gr = "SL.npreg", SL_Qr = "SL.npreg",
                     stratify = TRUE)
 npreg_fit
+
+## ---- message = FALSE, cache = TRUE--------------------------------------
+repeated_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                 SL_g = c("SL.glm", "SL.step.interaction", "SL.mean"),
+                 SL_Q = c("SL.glm", "SL.step.interaction", "SL.mean"),
+                 SL_gr = c("SL.glm", "SL.earth"),
+                 SL_Qr = c("SL.glm", "SL.earth"),
+                 stratify = FALSE, n_SL = 5)
+repeated_sl_fit
+
+## ---- message = FALSE----------------------------------------------------
+# outcome adaptive propensity score fit using glms
+adaptg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                     glm_Q = ".^2", glm_g = "Q1W + Q0W",
+                     adapt_g = TRUE)
+
+# outcome adaptive propensity score fit using super learner
+adaptg_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                     SL_Q = c("SL.glm", "SL.mean"), 
+                     SL_g = c("SL.glm", "SL.mean"),
+                     adapt_g = TRUE)
 
 ## ---- cache = TRUE, message = FALSE--------------------------------------
 # fit a GLM for outcome regression outside of drtmle
@@ -274,25 +298,25 @@ ci(glm_fit_multiA, contrast = riskRatio_2v0)
 cv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     SL_g = c("SL.glm", "SL.glm.interaction", "SL.earth"),
                     SL_Q = c("SL.glm", "SL.glm.interaction", "SL.earth"),
-                    SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
-                    SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
+                    SL_gr = c("SL.glm", "SL.mean"),
+                    SL_Qr = c("SL.glm", "SL.mean"),
                     stratify = FALSE, cvFolds = 2, a_0 = c(0, 1, 2))
 cv_sl_fit
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
-library(future.batchtools)
-library(parallel)
-cl <- makeCluster(2, type = "SOCK")
-plan(cluster, workers = cl)
-clusterEvalQ(cl, library("SuperLearner"))
-pcv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                     SL_g = c("SL.glm", "SL.glm.interaction","SL.earth"),
-                     SL_Q = c("SL.glm", "SL.glm.interaction","SL.earth"),
-                     SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
-                     SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
-                     stratify = FALSE, a_0 = c(0,1,2),
-                     cvFolds = 2, parallel = TRUE)
-pcv_sl_fit
+## ---- cache = TRUE, message = FALSE, eval = FALSE------------------------
+#  ## Commented out to avoid build errors
+#  # library(future.batchtools)
+#  # library(parallel)
+#  # cl <- makeCluster(2, type = "SOCK")
+#  # plan(cluster, workers = cl)
+#  # clusterEvalQ(cl, library("SuperLearner"))
+#  # pcv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+#  #                      SL_g = c("SL.glm", "SL.glm.interaction","SL.earth"),
+#  #                      SL_Q = c("SL.glm", "SL.glm.interaction","SL.earth"),
+#  #                      SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
+#  #                      SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
+#  #                      stratify = FALSE, a_0 = c(0,1,2),
+#  #                      cvFolds = 2, parallel = TRUE)
 
 ## ---- cache = TRUE-------------------------------------------------------
 npreg_iptw_multiA <- adaptive_iptw(W = W, A = A, Y = Y, stratify = FALSE,

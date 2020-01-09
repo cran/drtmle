@@ -163,7 +163,7 @@ test_that("drtmle executes as expected with stratify = TRUE", {
   expect_true(is.numeric(fit5$aiptw$cov))
   expect_true(is.numeric(fit5$aiptw_c$est))
   expect_true(is.numeric(fit5$aiptw_c$cov))
-    fit5 <- drtmle(
+  fit5 <- drtmle(
     W = W, A = A, Y = Y,
     family = gaussian(),
     stratify = TRUE,
@@ -460,7 +460,7 @@ test_that("drtmle executes when user inputs Qn and gn and returnModels = TRUE", 
   tmp <- runif(n)
   gn <- list(tmp, 1 - tmp)
 
-    fit9 <- drtmle(
+  fit9 <- drtmle(
     W = W, A = A, Y = Y,
     family = gaussian(),
     stratify = FALSE,
@@ -490,19 +490,21 @@ test_that("GitHub error #16 resolves", {
   set.seed(123456)
   X <- runif(100, 0, 1)
 
-Q <- X
+  Q <- X
 
-g <- exp(X) / (1 + exp(X))
+  g <- exp(X) / (1 + exp(X))
 
-A <- rbinom(100, 1, g)
+  A <- rbinom(100, 1, g)
 
-Y <- runif(Q, -0.1, 0.1)
+  Y <- runif(Q, -0.1, 0.1)
 
-X <- as.data.frame(X)
+  X <- as.data.frame(X)
 
-a <- drtmle(W = X, A = A, Y = Y, a_0 = 1, glm_Q = 'X', 
-            glm_g = 'X', SL_Qr = 'SL.npreg', 
-            guard = 'Q', returnModel = TRUE)
+  a <- drtmle(
+    W = X, A = A, Y = Y, a_0 = 1, glm_Q = "X",
+    glm_g = "X", SL_Qr = "SL.npreg",
+    guard = "Q", returnModel = TRUE
+  )
   expect_true(is.numeric(a$gcomp$est))
   expect_true(is.numeric(a$tmle$est))
   expect_true(is.numeric(a$tmle$est))
@@ -513,10 +515,12 @@ a <- drtmle(W = X, A = A, Y = Y, a_0 = 1, glm_Q = 'X',
   expect_true(is.numeric(a$aiptw$cov))
   expect_true(is.numeric(a$aiptw_c$est))
   expect_true(is.numeric(a$aiptw_c$cov))
-# and the converse 
-b <- drtmle(W = X, A = A, Y = Y, a_0 = 1, glm_Q = 'X', 
-            glm_g = 'X', SL_gr = 'SL.npreg', 
-            guard = 'g', returnModel = TRUE)
+  # and the converse
+  b <- drtmle(
+    W = X, A = A, Y = Y, a_0 = 1, glm_Q = "X",
+    glm_g = "X", SL_gr = "SL.npreg",
+    guard = "g", returnModel = TRUE
+  )
   expect_true(is.numeric(b$gcomp$est))
   expect_true(is.numeric(b$tmle$est))
   expect_true(is.numeric(b$tmle$est))
@@ -527,5 +531,33 @@ b <- drtmle(W = X, A = A, Y = Y, a_0 = 1, glm_Q = 'X',
   expect_true(is.numeric(b$aiptw$cov))
   expect_true(is.numeric(b$aiptw_c$est))
   expect_true(is.numeric(b$aiptw_c$cov))
+})
 
+test_that("drtmle executes with adapt_g", {
+  set.seed(123456)
+  n <- 100
+  W <- data.frame(W1 = runif(n), W2 = rnorm(n))
+  A <- rbinom(n, 1, plogis(W$W1 - W$W2))
+  Y <- rnorm(n, W$W1 * W$W2 * A, 2)
+  
+  fit10 <- drtmle(
+    W = W, A = A, Y = Y,
+    family = gaussian(),
+    stratify = FALSE,
+    adapt_g = TRUE, 
+    glm_Q = ".^2", glm_g = ".",
+    a_0 = c(0,1),
+    returnModels = TRUE,
+    guard = c("Q", "g"),
+    reduction = "univariate"
+  )
+
+  # fit externally as well
+  Qmod <- glm(Y ~ .^2 , data = data.frame(A = A, W))
+  Qnframe <- data.frame(Q0W = predict(Qmod, newdata = data.frame(A = 0, W)),
+                        Q1W = predict(Qmod, newdata = data.frame(A = 1, W)))
+  gmod <- glm(A ~ . , data = Qnframe, family = binomial())
+  gn <- list(1 - gmod$fitted.values,  gmod$fitted.values)
+  expect_true(all(fit10$nuisance_drtmle$gn[[1]] - gn[[1]] < 1e-4))
+  expect_true(all(fit10$nuisance_drtmle$gn[[2]] - gn[[2]] < 1e-4))
 })

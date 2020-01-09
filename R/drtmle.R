@@ -17,24 +17,29 @@
 #'  to pool across \code{A} (if \code{FALSE}).
 #' @param SL_Q A vector of characters or a list describing the Super Learner
 #'  library to be used for the outcome regression. See
-#'  \code{link{SuperLearner::SuperLearner}} for details.
+#'  \code{\link[SuperLearner]{SuperLearner}} for details.
 #' @param SL_g A vector of characters describing the super learner library to be
 #'  used for each of the propensity score regressions (\code{DeltaA}, \code{A},
 #'  and \code{DeltaY}). To use the same library for each of the regressions (or
 #'  if there is no missing data in \code{A} nor \code{Y}), a single library may
-#'  be input. See \code{link{SuperLearner::SuperLearner}} for details on how
+#'  be input. See \code{\link[SuperLearner]{SuperLearner}} for details on how
 #'  super learner libraries can be specified.
 #' @param SL_Qr A vector of characters or a list describing the Super Learner
 #'  library to be used for the reduced-dimension outcome regression.
 #' @param SL_gr A vector of characters or a list describing the Super Learner
-#'  library to be used for the second reduced-dimension propensity score.
+#'  library to be used for the reduced-dimension propensity score.
+#' @param n_SL Number of repeated Super Learners to run (default 1) for the
+#'  each nuisance parameter. Repeat Super Learners more times to obtain more stable
+#'  inference.
 #' @param glm_Q A character describing a formula to be used in the call to
 #'  \code{glm} for the outcome regression. Ignored if \code{SL_Q!=NULL}.
 #' @param glm_g A list of characters describing the formulas to be used
 #'  for each of the propensity score regressions (\code{DeltaA}, \code{A}, and
 #'  \code{DeltaY}). To use the same formula for each of the regressions (or if
-#'  there is no missing data in \code{A} nor \code{Y}), a single character
-#'  formula may be input.
+#'  there are no missing data in \code{A} nor \code{Y}), a single character
+#'  formula may be input. In general the formulas can reference any variable in 
+#'  \code{colnames(W)}, unless \code{adapt_g = TRUE} in which case the formulas
+#'  should reference variables \code{QaW} where \code{a} takes values in \code{a_0}.
 #' @param glm_Qr A character describing a formula to be used in the call to
 #'  \code{glm} for reduced-dimension outcome regression. Ignored if
 #'  \code{SL_Qr!=NULL}. The formula should use the variable name \code{'gn'}.
@@ -42,6 +47,10 @@
 #'  \code{glm} for the reduced-dimension propensity score. Ignored if
 #'  \code{SL_gr!=NULL}. The formula should use the variable name \code{'Qn'} and
 #'  \code{'gn'} if \code{reduction='bivariate'} and \code{'Qn'} otherwise.
+#' @param adapt_g A boolean indicating whether the propensity score should be 
+#'  outcome adaptive. If \code{TRUE} then the propensity score is estimated as the
+#'  regression of \code{A} onto covariates \code{QaW} for \code{a} in each value
+#'  contained in \code{a_0}. See vignette for more details. 
 #' @param guard A character vector indicating what pattern of misspecifications
 #'  to guard against. If \code{guard} contains \code{"Q"}, then the TMLE guards
 #'  against misspecification of the outcome regression by estimating the
@@ -49,7 +58,8 @@
 #'  \code{SL_Qr}. If \code{guard} contains \code{"g"} then the TMLE
 #'  (additionally) guards against misspecification of the propensity score by
 #'  estimating the reduced-dimension propensity score specified by \code{glm_gr}
-#'  or \code{SL_gr}.
+#'  or \code{SL_gr}. If \code{guard} is set to \code{NULL}, then only standard TMLE
+#'  and one-step estimators are computed.
 #' @param reduction A character equal to \code{"univariate"} for a univariate
 #'  misspecification correction (default) or \code{"bivariate"} for the
 #'  bivariate version.
@@ -97,7 +107,7 @@
 #'  should be propensity of \code{A} = 0 and \code{gn[[2]]} should be propensity
 #'  of \code{A} = 1).
 #' @param use_future Boolean indicating whether to use \code{future_lapply} or
-#' instead to just use lapply. The latter can be easier to run down errors. 
+#' instead to just use lapply. The latter can be easier to run down errors.
 #' @param ... Other options (not currently used).
 #'
 #' @return An object of class \code{"drtmle"}.
@@ -143,7 +153,6 @@
 #'        of covariate-adjusted means.}
 #' }
 #'
-#' @importFrom plyr llply laply
 #' @importFrom future plan sequential multiprocess
 #' @importFrom future.apply future_lapply
 #' @importFrom doFuture registerDoFuture
@@ -161,20 +170,21 @@
 #' set.seed(123456)
 #' n <- 100
 #' W <- data.frame(W1 = runif(n), W2 = rnorm(n))
-#' A <- rbinom(n,1,plogis(W$W1 - W$W2))
-#' Y <- rbinom(n, 1, plogis(W$W1*W$W2*A))
+#' A <- rbinom(n, 1, plogis(W$W1 - W$W2))
+#' Y <- rbinom(n, 1, plogis(W$W1 * W$W2 * A))
 #' # A quick example of drtmle:
 #' # We note that more flexible super learner libraries
 #' # are available, and that we recommend the user use more flexible
 #' # libraries for SL_Qr and SL_gr for general use.
-#' fit1 <- drtmle(W = W, A = A, Y = Y, a_0 = c(1,0),
-#'                family=binomial(),
-#'                stratify=FALSE,
-#'                SL_Q = c("SL.glm", "SL.mean", "SL.glm.interaction"),
-#'                SL_g = c("SL.glm", "SL.mean", "SL.glm.interaction"),
-#'                SL_Qr = "SL.glm",
-#'                SL_gr = "SL.glm", maxIter = 1)
-
+#' fit1 <- drtmle(
+#'   W = W, A = A, Y = Y, a_0 = c(1, 0),
+#'   family = binomial(),
+#'   stratify = FALSE,
+#'   SL_Q = c("SL.glm", "SL.mean", "SL.glm.interaction"),
+#'   SL_g = c("SL.glm", "SL.mean", "SL.glm.interaction"),
+#'   SL_Qr = "SL.glm",
+#'   SL_gr = "SL.glm", maxIter = 1
+#' )
 drtmle <- function(Y, A, W,
                    DeltaA = as.numeric(!is.na(A)),
                    DeltaY = as.numeric(!is.na(Y)),
@@ -185,10 +195,14 @@ drtmle <- function(Y, A, W,
                      stats::gaussian()
                    },
                    stratify = TRUE,
-                   SL_Q = NULL, SL_g = NULL,
-                   SL_Qr = NULL, SL_gr = NULL,
+                   SL_Q = NULL,
+                   SL_g = NULL,
+                   SL_Qr = NULL,
+                   SL_gr = NULL,
+                   n_SL = 1,
                    glm_Q = NULL, glm_g = NULL,
                    glm_Qr = NULL, glm_gr = NULL,
+                   adapt_g = FALSE, 
                    guard = c("Q", "g"),
                    reduction = "univariate",
                    returnModels = FALSE,
@@ -205,27 +219,25 @@ drtmle <- function(Y, A, W,
                    use_future = TRUE,
                    ...) {
   call <- match.call()
-  # if cvFolds non-null split data into cvFolds pieces
   n <- length(Y)
   # save user input Qn and gn, because these values
   # get overwritten later.
   Qn_user <- !is.null(Qn)
   gn_user <- !is.null(gn)
 
-  if (length(cvFolds) > 1) {
-    stopifnot(length(cvFolds) == length(Y))
-    # comes in as vector of fold assignments
-    # split up into a list of id's
-    validRows <- sapply(sort(unique(cvFolds)), function(f) {
-      which(cvFolds == f)
-    }, simplify = FALSE)
-  } else if (cvFolds != 1) {
-    # split data up
-    validRows <- split(sample(seq_len(n)), rep(seq_len(cvFolds), length = n))
-  } else {
-    # no cross-validation
-    validRows <- list(seq_len(n))
+  # check if any additional targeting is performed
+  extra_targeting <- !is.null(guard)
+  # if using adaptive propensity, extra targeting not needed
+  if(adapt_g){
+    extra_targeting <- FALSE
+    guard <- NULL
   }
+  # if cvFolds non-null split data into cvFolds pieces
+  validRows <- make_validRows(cvFolds, n = length(Y), n_SL = n_SL)
+  if (n_SL > 1) {
+    validRows <- rep(validRows, n_SL)
+  }
+
   # use futures with foreach if parallel mode
   if (!parallel) {
     future::plan(future::transparent)
@@ -250,51 +262,12 @@ drtmle <- function(Y, A, W,
       }
     }
   }
-  # -------------------------------
-  # estimate propensity score
-  # -------------------------------
-  if (is.null(gn)) {
-    if(use_future){
-      gnOut <- future.apply::future_lapply(
-        X = validRows, FUN = estimateG, A = A,
-        W = W, DeltaA = DeltaA, DeltaY = DeltaY,
-        tolg = tolg, verbose = verbose,
-        stratify = stratify,
-        returnModels = returnModels, SL_g = SL_g,
-        glm_g = glm_g, a_0 = a_0
-      )
-    }else{
-      gnOut <- lapply(
-        X = validRows, FUN = estimateG, A = A,
-        W = W, DeltaA = DeltaA, DeltaY = DeltaY,
-        tolg = tolg, verbose = verbose,
-        stratify = stratify,
-        returnModels = returnModels, SL_g = SL_g,
-        glm_g = glm_g, a_0 = a_0
-      )
-    }
-    # re-order predictions
-    gnValid <- unlist(gnOut, recursive = FALSE, use.names = FALSE)
-    gnUnOrd <- do.call(Map, c(c, gnValid[seq(1, length(gnValid), 2)]))
-    gn <- vector(mode = "list", length = length(a_0))
-    for (i in seq_along(a_0)) {
-      gn[[i]] <- rep(NA, n)
-      gn[[i]][unlist(validRows)] <- gnUnOrd[[i]]
-    }
-    # obtain list of propensity score fits
-    gnMod <- gnValid[seq(2, length(gnValid), 2)]
-  }else{
-    # truncate too-small predictions
-    gn <- lapply(gn, function(g) {
-      g[g < tolg] <- tolg
-      g
-    })
-  }
+
   # -------------------------------
   # estimate outcome regression
   # -------------------------------
   if (is.null(Qn)) {
-    if(use_future){
+    if (use_future) {
       QnOut <- future.apply::future_lapply(
         X = validRows, FUN = estimateQ,
         Y = Y, A = A, W = W,
@@ -306,7 +279,7 @@ drtmle <- function(Y, A, W,
         glm_Q = glm_Q,
         family = family
       )
-    }else{
+    } else {
       QnOut <- lapply(
         X = validRows, FUN = estimateQ,
         Y = Y, A = A, W = W,
@@ -320,15 +293,53 @@ drtmle <- function(Y, A, W,
       )
     }
     # re-order predictions
-    QnValid <- unlist(QnOut, recursive = FALSE, use.names = FALSE)
-    QnUnOrd <- do.call(Map, c(c, QnValid[seq(1, length(QnValid), 2)]))
-    Qn <- vector(mode = "list", length = length(a_0))
-    for (i in seq_along(a_0)) {
-      Qn[[i]] <- rep(NA, n)
-      Qn[[i]][unlist(validRows)] <- QnUnOrd[[i]]
-    }
+    Qn <- reorder_list(QnOut,
+      a_0 = a_0, validRows = validRows,
+      n_SL = n_SL, n = n
+    )
+
     # obtain list of outcome regression fits
-    QnMod <- QnValid[seq(2, length(QnValid), 2)]
+    QnMod <- extract_models(QnOut)
+  }
+
+  # -------------------------------
+  # estimate propensity score
+  # -------------------------------
+  if (is.null(gn)) {
+    if (use_future) {
+      gnOut <- future.apply::future_lapply(
+        X = validRows, FUN = estimateG, A = A,
+        W = W, DeltaA = DeltaA, DeltaY = DeltaY,
+        tolg = tolg, verbose = verbose,
+        stratify = stratify,
+        returnModels = returnModels, SL_g = SL_g,
+        glm_g = glm_g, a_0 = a_0, 
+        Qn = Qn, adapt_g = adapt_g
+      )
+    } else {
+      gnOut <- lapply(
+        X = validRows, FUN = estimateG, A = A,
+        W = W, DeltaA = DeltaA, DeltaY = DeltaY,
+        tolg = tolg, verbose = verbose,
+        stratify = stratify,
+        returnModels = returnModels, SL_g = SL_g,
+        glm_g = glm_g, a_0 = a_0,
+        Qn = Qn, adapt_g = adapt_g
+      )
+    }
+    # re-order predictions
+    gn <- reorder_list(gnOut,
+      a_0 = a_0, validRows = validRows,
+      n_SL = n_SL, n = n
+    )
+    # obtain list of propensity score fits
+    gnMod <- extract_models(gnOut)
+  } else {
+    # truncate too-small predictions
+    gn <- lapply(gn, function(g) {
+      g[g < tolg] <- tolg
+      g
+    })
   }
   # naive g-computation estimate
   psi_n <- lapply(Qn, mean)
@@ -348,7 +359,7 @@ drtmle <- function(Y, A, W,
   PnDQn <- PnDgn <- 0
 
   if ("Q" %in% guard) {
-    if(use_future){
+    if (use_future) {
       QrnOut <- future.apply::future_lapply(
         X = validRows, FUN = estimateQrn,
         Y = Y, A = A, W = W,
@@ -357,7 +368,7 @@ drtmle <- function(Y, A, W,
         family = stats::gaussian(), SL_Qr = SL_Qr,
         a_0 = a_0, returnModels = returnModels
       )
-    }else{
+    } else {
       QrnOut <- lapply(
         X = validRows, FUN = estimateQrn,
         Y = Y, A = A, W = W,
@@ -368,26 +379,24 @@ drtmle <- function(Y, A, W,
       )
     }
     # re-order predictions
-    QrnValid <- unlist(QrnOut, recursive = FALSE, use.names = FALSE)
-    QrnUnOrd <- do.call(Map, c(c, QrnValid[seq(1, length(QrnValid), 2)]))
-    Qrn <- vector(mode = "list", length = length(a_0))
-    for (i in seq_along(a_0)) {
-      Qrn[[i]] <- rep(NA, n)
-      Qrn[[i]][unlist(validRows)] <- QrnUnOrd[[i]]
-    }
+    Qrn <- reorder_list(QrnOut,
+      a_0 = a_0, validRows = validRows,
+      n_SL = n_SL, n = n
+    )
+
     # obtain list of reduced dimension regression fits
-    QrnMod <- QrnValid[seq(2, length(QrnValid), 2)]
+    QrnMod <- extract_models(QrnOut)
 
     Dngo <- eval_Dstar_g(
       A = A, DeltaY = DeltaY, DeltaA = DeltaA, Qrn = Qrn,
       gn = gn, a_0 = a_0
     )
     PnDgn <- lapply(Dngo, mean)
-  }else{
+  } else {
     Qrn <- NULL
   }
   if ("g" %in% guard) {
-    if(use_future){
+    if (use_future) {
       grnOut <- future.apply::future_lapply(
         X = validRows, FUN = estimategrn,
         Y = Y, A = A, W = W,
@@ -397,7 +406,7 @@ drtmle <- function(Y, A, W,
         reduction = reduction,
         returnModels = returnModels
       )
-    }else{
+    } else {
       grnOut <- lapply(
         X = validRows, FUN = estimategrn,
         Y = Y, A = A, W = W,
@@ -409,15 +418,14 @@ drtmle <- function(Y, A, W,
       )
     }
     # re-order predictions
-    grnValid <- unlist(grnOut, recursive = FALSE, use.names = FALSE)
-    grnUnOrd <- do.call(Map, c(rbind, grnValid[seq(1, length(grnValid), 2)]))
-    grn <- vector(mode = "list", length = length(a_0))
-    for (i in seq_along(a_0)) {
-      grn[[i]] <- data.frame(grn1 = rep(NA, n), grn2 = rep(NA, n))
-      grn[[i]][unlist(validRows), ] <- cbind(grnUnOrd[[i]])
-    }
+    grn <- reorder_list(grnOut,
+      a_0 = a_0, validRows = validRows,
+      grn_ind = TRUE,
+      n_SL = n_SL, n = n
+    )
+
     # obtain list of outcome regression fits
-    grnMod <- grnValid[seq(2, length(grnValid), 2)]
+    grnMod <- extract_models(grnOut)
 
     # evaluate extra piece of influence function
     DnQo <- eval_Dstar_Q(
@@ -426,7 +434,7 @@ drtmle <- function(Y, A, W,
       reduction = reduction
     )
     PnDQn <- lapply(DnQo, mean)
-  }else{
+  } else {
     grn <- NULL
   }
 
@@ -456,184 +464,185 @@ drtmle <- function(Y, A, W,
 
   # initialize fluctuations
   QnStar <- Qn
-  if ("g" %in% guard){ 
+  if ("g" %in% guard) {
     grnStar <- grn
-  }else{
+    PnDQnStar <- Inf
+  } else {
     grnStar <- NULL
+    PnDQnStar <- 0
   }
-  if ("Q" %in% guard){
+  if ("Q" %in% guard) {
     QrnStar <- Qrn
-  }else{
+    PnDgnStar <- Inf
+  } else {
     QrnStar <- NULL
+    PnDgnStar <- 0
   }
   gnStar <- gn
-  PnDQnStar <- PnDgnStar <- PnDnoStar <- Inf
+  PnDnoStar <- Inf
   ct <- 0
 
-  # fluctuate
-  while (max(abs(c(unlist(PnDQnStar), unlist(PnDgnStar), unlist(PnDnoStar)))) >
-    tolIC & ct < maxIter) {
-    ct <- ct + 1
+  if (extra_targeting) {
+    # fluctuate
+    while (max(abs(c(unlist(PnDQnStar), unlist(PnDgnStar), unlist(PnDnoStar)))) >
+      tolIC & ct < maxIter) {
+      ct <- ct + 1
 
-    # re-estimate Qrn
-    if ("Q" %in% guard) {
-      # fluctuate gnStar
-      gnStarOut <- fluctuateG(
-        Y = Y, A = A, W = W, DeltaA = DeltaA,
-        DeltaY = DeltaY, a_0 = a_0, tolg = tolg,
-        gn = gnStar, Qrn = QrnStar
-      )
-      gnStar <- plyr::llply(gnStarOut, function(x) {
-        unlist(x$est)
-      })
-    }
-
-    # fluctuate QnStar
-    if ("g" %in% guard) {
-      if(use_future){
-        grnStarOut <- future.apply::future_lapply(
-          X = validRows, FUN = estimategrn,
-          Y = Y, A = A, W = W,
-          DeltaA = DeltaA, DeltaY = DeltaY,
-          tolg = tolg, Qn = QnStar,
-          gn = gnStar, glm_gr = glm_gr,
-          SL_gr = SL_gr, a_0 = a_0,
-          reduction = reduction,
-          returnModels = returnModels
-        )
-      }else{
-        grnStarOut <- lapply(
-          X = validRows, FUN = estimategrn,
-          Y = Y, A = A, W = W,
-          DeltaA = DeltaA, DeltaY = DeltaY,
-          tolg = tolg, Qn = QnStar,
-          gn = gnStar, glm_gr = glm_gr,
-          SL_gr = SL_gr, a_0 = a_0,
-          reduction = reduction,
-          returnModels = returnModels
-        )
-      }
-      # re-order predictions
-      grnValid <- unlist(grnStarOut, recursive = FALSE, use.names = FALSE)
-      grnUnOrd <- do.call(Map, c(rbind, grnValid[seq(1, length(grnValid), 2)]))
-      grnStar <- vector(mode = "list", length = length(a_0))
-      for (i in 1:length(a_0)) {
-        grnStar[[i]] <- data.frame(grn1 = rep(NA, n), grn2 = rep(NA, n))
-        grnStar[[i]][unlist(validRows), ] <- cbind(grnUnOrd[[i]])
-      }
-      # obtain list of outcome regression fits
-      grnMod <- grnValid[seq(2, length(grnValid), 2)]
-
-      if (Qsteps == 1) {
-        QnStarOut <- fluctuateQ(
+      # re-estimate Qrn
+      if ("Q" %in% guard) {
+        # fluctuate gnStar
+        gnStarOut <- fluctuateG(
           Y = Y, A = A, W = W, DeltaA = DeltaA,
-          DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
-          gn = gnStar, grn = grnStar,
-          reduction = reduction
+          DeltaY = DeltaY, a_0 = a_0, tolg = tolg,
+          gn = gnStar, Qrn = QrnStar
         )
-        QnStar <- plyr::llply(QnStarOut, function(x) {
+        gnStar <- lapply(gnStarOut, function(x) {
           unlist(x$est)
         })
-      } else if (Qsteps == 2) {
-        # do the extra targeting
-        QnStarOut2 <- fluctuateQ2(
-          Y = Y, A = A, W = W, DeltaA = DeltaA,
-          DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
-          gn = gnStar, grn = grnStar,
-          reduction = reduction
-        )
-        QnStar <- plyr::llply(QnStarOut2, function(x) {
-          unlist(x[[1]])
-        })
+      }
 
-        # do the usual targeting
-        QnStarOut1 <- fluctuateQ1(
+      # fluctuate QnStar
+      if ("g" %in% guard) {
+        if (use_future) {
+          grnStarOut <- future.apply::future_lapply(
+            X = validRows, FUN = estimategrn,
+            Y = Y, A = A, W = W,
+            DeltaA = DeltaA, DeltaY = DeltaY,
+            tolg = tolg, Qn = QnStar,
+            gn = gnStar, glm_gr = glm_gr,
+            SL_gr = SL_gr, a_0 = a_0,
+            reduction = reduction,
+            returnModels = returnModels
+          )
+        } else {
+          grnStarOut <- lapply(
+            X = validRows, FUN = estimategrn,
+            Y = Y, A = A, W = W,
+            DeltaA = DeltaA, DeltaY = DeltaY,
+            tolg = tolg, Qn = QnStar,
+            gn = gnStar, glm_gr = glm_gr,
+            SL_gr = SL_gr, a_0 = a_0,
+            reduction = reduction,
+            returnModels = returnModels
+          )
+        }
+        # re-order predictions
+        grnStar <- reorder_list(grnStarOut,
+          a_0 = a_0, validRows = validRows,
+          grn_ind = TRUE, n_SL = n_SL, n = n
+        )
+
+        # obtain list of outcome regression fits
+        grnMod <- extract_models(grnStarOut)
+
+        if (Qsteps == 1) {
+          QnStarOut <- fluctuateQ(
+            Y = Y, A = A, W = W, DeltaA = DeltaA,
+            DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
+            gn = gnStar, grn = grnStar,
+            reduction = reduction
+          )
+          QnStar <- lapply(QnStarOut, function(x) {
+            unlist(x$est)
+          })
+        } else if (Qsteps == 2) {
+          # do the extra targeting
+          QnStarOut2 <- fluctuateQ2(
+            Y = Y, A = A, W = W, DeltaA = DeltaA,
+            DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
+            gn = gnStar, grn = grnStar,
+            reduction = reduction
+          )
+          QnStar <- lapply(QnStarOut2, function(x) {
+            unlist(x[[1]])
+          })
+
+          # do the usual targeting
+          QnStarOut1 <- fluctuateQ1(
+            Y = Y, A = A, W = W, DeltaA = DeltaA,
+            DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
+            gn = gnStar
+          )
+          QnStar <- lapply(QnStarOut1, function(x) {
+            unlist(x[[1]])
+          })
+        }
+      } else {
+        QnStarOut <- fluctuateQ1(
           Y = Y, A = A, W = W, DeltaA = DeltaA,
           DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
           gn = gnStar
         )
-        QnStar <- plyr::llply(QnStarOut1, function(x) {
+        QnStar <- lapply(QnStarOut, function(x) {
           unlist(x[[1]])
         })
       }
-    } else {
-      QnStarOut <- fluctuateQ1(
-        Y = Y, A = A, W = W, DeltaA = DeltaA,
-        DeltaY = DeltaY, a_0 = a_0, Qn = QnStar,
-        gn = gnStar
-      )
-      QnStar <- plyr::llply(QnStarOut, function(x) {
-        unlist(x[[1]])
-      })
-    }
 
-    if ("Q" %in% guard) {
-      if(use_future){
-        QrnStarOut <- future.apply::future_lapply(
-          X = validRows, FUN = estimateQrn,
-          Y = Y, A = A, W = W,
-          DeltaA = DeltaA, DeltaY = DeltaY,
-          Qn = QnStar, gn = gnStar,
-          glm_Qr = glm_Qr,
-          family = stats::gaussian(),
-          SL_Qr = SL_Qr, a_0 = a_0,
-          returnModels = returnModels
+      if ("Q" %in% guard) {
+        if (use_future) {
+          QrnStarOut <- future.apply::future_lapply(
+            X = validRows, FUN = estimateQrn,
+            Y = Y, A = A, W = W,
+            DeltaA = DeltaA, DeltaY = DeltaY,
+            Qn = QnStar, gn = gnStar,
+            glm_Qr = glm_Qr,
+            family = stats::gaussian(),
+            SL_Qr = SL_Qr, a_0 = a_0,
+            returnModels = returnModels
+          )
+        } else {
+          QrnStarOut <- lapply(
+            X = validRows, FUN = estimateQrn,
+            Y = Y, A = A, W = W,
+            DeltaA = DeltaA, DeltaY = DeltaY,
+            Qn = QnStar, gn = gnStar,
+            glm_Qr = glm_Qr,
+            family = stats::gaussian(),
+            SL_Qr = SL_Qr, a_0 = a_0,
+            returnModels = returnModels
+          )
+        }
+        # re-order predictions
+        QrnStar <- reorder_list(QrnStarOut,
+          a_0 = a_0, validRows = validRows,
+          n_SL = n_SL, n = n
         )
-      }else{
-        QrnStarOut <- lapply(
-          X = validRows, FUN = estimateQrn,
-          Y = Y, A = A, W = W,
-          DeltaA = DeltaA, DeltaY = DeltaY,
-          Qn = QnStar, gn = gnStar,
-          glm_Qr = glm_Qr,
-          family = stats::gaussian(),
-          SL_Qr = SL_Qr, a_0 = a_0,
-          returnModels = returnModels
+        # obtain list of reduced dimension regression fits
+        QrnMod <- extract_models(QrnStarOut)
+      }
+
+      # tmle estimates
+      psi_t <- lapply(QnStar, mean)
+
+      # calculate influence functions
+      DnoStar <- eval_Dstar(
+        A = A, Y = Y, DeltaY = DeltaY, DeltaA = DeltaA,
+        Qn = QnStar, gn = gnStar, psi_n = psi_t, a_0 = a_0
+      )
+      PnDnoStar <- lapply(DnoStar, mean)
+
+      if ("g" %in% guard) {
+        DnQoStar <- eval_Dstar_Q(
+          A = A, Y = Y, DeltaY = DeltaY,
+          DeltaA = DeltaA, Qn = QnStar, grn = grnStar, gn = gn,
+          a_0 = a_0, reduction = reduction
         )
+        PnDQnStar <- lapply(DnQoStar, mean)
       }
-      # re-order predictions
-      QrnValid <- unlist(QrnStarOut, recursive = FALSE, use.names = FALSE)
-      QrnUnOrd <- do.call(Map, c(c, QrnValid[seq(1, length(QrnValid), 2)]))
-      QrnStar <- vector(mode = "list", length = length(a_0))
-      for (i in seq_along(a_0)) {
-        QrnStar[[i]] <- rep(NA, n)
-        QrnStar[[i]][unlist(validRows)] <- QrnUnOrd[[i]]
+      if ("Q" %in% guard) {
+        DngoStar <- eval_Dstar_g(
+          A = A, DeltaY = DeltaY, DeltaA = DeltaA,
+          Qrn = QrnStar, gn = gnStar, a_0 = a_0
+        )
+        PnDgnStar <- lapply(DngoStar, mean)
       }
-      # obtain list of reduced dimension regression fits
-      QrnMod <- QrnValid[seq(2, length(QrnValid), 2)]
-    }
-
-    # tmle estimates
-    psi_t <- lapply(QnStar, mean)
-
-    # calculate influence functions
-    DnoStar <- eval_Dstar(
-      A = A, Y = Y, DeltaY = DeltaY, DeltaA = DeltaA,
-      Qn = QnStar, gn = gnStar, psi_n = psi_t, a_0 = a_0
-    )
-    PnDnoStar <- lapply(DnoStar, mean)
-
-    if ("g" %in% guard) {
-      DnQoStar <- eval_Dstar_Q(
-        A = A, Y = Y, DeltaY = DeltaY,
-        DeltaA = DeltaA, Qn = QnStar, grn = grnStar, gn = gn,
-        a_0 = a_0, reduction = reduction
-      )
-      PnDQnStar <- lapply(DnQoStar, mean)
-    }
-    if ("Q" %in% guard) {
-      DngoStar <- eval_Dstar_g(
-        A = A, DeltaY = DeltaY, DeltaA = DeltaA,
-        Qrn = QrnStar, gn = gnStar, a_0 = a_0
-      )
-      PnDgnStar <- lapply(DngoStar, mean)
-    }
-    if (verbose) {
-      cat("Mean of IC       =", round(c(
-        unlist(PnDnoStar),
-        unlist(PnDQnStar),
-        unlist(PnDgnStar)
-      ), 10), "\n")
+      if (verbose) {
+        cat("Mean of IC       =", round(c(
+          unlist(PnDnoStar),
+          unlist(PnDQnStar),
+          unlist(PnDgnStar)
+        ), 10), "\n")
+      }
     }
   }
 
@@ -642,14 +651,18 @@ drtmle <- function(Y, A, W,
     Y = Y, A = A, W = W, DeltaA = DeltaA,
     DeltaY = DeltaY, Qn = Qn, gn = gn, a_0 = a_0
   )
-  # could potentially parallelize with future since plyr uses foreach internally
-  QnStar1 <- plyr::llply(QnStar1Out, function(x) {
+  QnStar1 <- lapply(QnStar1Out, function(x) {
     unlist(x[[1]])
   })
 
   # tmle estimates
-  psi_t <- lapply(QnStar, mean)
   psi_t1 <- lapply(QnStar1, mean)
+  if (extra_targeting) {
+    psi_t <- lapply(QnStar, mean)
+  } else {
+    psi_t <- psi_t1
+  }
+
 
   # covariance for tmle
   Dno1Star <- eval_Dstar(
@@ -657,7 +670,7 @@ drtmle <- function(Y, A, W,
     Qn = QnStar1, gn = gn, psi_n = psi_t1, a_0 = a_0
   )
   Dno1StarMat <- matrix(unlist(Dno1Star), nrow = n, ncol = length(a_0))
-  cov_t1 <- stats::cov(Dno1StarMat)/n
+  cov_t1 <- stats::cov(Dno1StarMat) / n
 
   # covariance for drtmle
   DnoStar <- eval_Dstar(
@@ -716,16 +729,16 @@ drtmle <- function(Y, A, W,
 
   # tack on models if requested
   if (returnModels) {
-    if(!Qn_user){
+    if (!Qn_user) {
       out$QnMod <- QnMod
     }
-    if(!gn_user){
+    if (!gn_user) {
       out$gnMod <- gnMod
     }
-    if('Q' %in% guard){
+    if ("Q" %in% guard) {
       out$QrnMod <- QrnMod
     }
-    if('g' %in% guard){
+    if ("g" %in% guard) {
       out$grnMod <- grnMod
     }
   }

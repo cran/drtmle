@@ -89,7 +89,6 @@
 #'  \item{\code{call}}{The call to \code{adaptive_iptw}.}
 #' }
 #'
-#' @importFrom plyr llply laply
 #' @importFrom future plan
 #' @importFrom future.apply future_lapply
 #' @importFrom doFuture registerDoFuture
@@ -104,13 +103,16 @@
 #' set.seed(123456)
 #' n <- 100
 #' W <- data.frame(W1 = runif(n), W2 = rnorm(n))
-#' A <- rbinom(n,1,plogis(W$W1 - W$W2))
-#' Y <- rbinom(n, 1, plogis(W$W1*W$W2*A))
+#' A <- rbinom(n, 1, plogis(W$W1 - W$W2))
+#' Y <- rbinom(n, 1, plogis(W$W1 * W$W2 * A))
 #' # fit iptw with maxIter = 1 to run fast
-#' fit1 <- adaptive_iptw(W = W, A = A, Y = Y, a_0 = c(1,0),
-#'                SL_g=c("SL.glm","SL.mean","SL.step"),
-#'                SL_Qr="SL.npreg", maxIter = 1)
-
+#' \donttest{
+#' fit1 <- adaptive_iptw(
+#'   W = W, A = A, Y = Y, a_0 = c(1, 0),
+#'   SL_g = c("SL.glm", "SL.mean", "SL.step"),
+#'   SL_Qr = "SL.npreg", maxIter = 1
+#' )
+#' }
 adaptive_iptw <- function(W, A, Y,
                           DeltaY = as.numeric(!is.na(Y)),
                           DeltaA = as.numeric(!is.na(A)),
@@ -262,7 +264,7 @@ adaptive_iptw <- function(W, A, Y,
       DeltaY = DeltaY, a_0 = a_0, tolg = tolg,
       gn = gnStar, Qrn = QrnStar
     )
-    gnStar <- plyr::llply(gnStarOut, function(x) {
+    gnStar <- lapply(gnStarOut, function(x) {
       unlist(x$est)
     })
     # re-estimate reduced dimension regression
