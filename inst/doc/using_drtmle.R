@@ -1,7 +1,7 @@
-## ----global_options, include=FALSE---------------------------------------
+## ----global_options, include=FALSE--------------------------------------------
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
-## ---- echo = FALSE, message = FALSE--------------------------------------
+## ---- echo = FALSE, message = FALSE-------------------------------------------
 library(drtmle)
 set.seed(1234)
 N <- 1e6
@@ -11,14 +11,14 @@ Y0 <- rbinom(N, 1, plogis(W$W1))
 EY1 <- mean(Y1)
 EY0 <- mean(Y0)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 set.seed(1234)
 n <- 200
 W <- data.frame(W1 = runif(n), W2 = rbinom(n, 1, 0.5))
 A <- rbinom(n, 1, plogis(W$W1 + W$W2))
 Y <- rbinom(n, 1, plogis(W$W1 + W$W2*A))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 glm_fit_uni <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                       glm_g = "W1 + W2", glm_Q = "W1 + W2*A",
                       glm_gr = "Qn", glm_Qr = "gn", stratify = FALSE)
@@ -30,10 +30,11 @@ glm_fit_biv <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                       reduction = "bivariate")
 glm_fit_biv
 
-## ---- echo = FALSE, message = FALSE--------------------------------------
+## ---- echo = FALSE, message = FALSE-------------------------------------------
 library(SuperLearner)
 
-## ---- warning = FALSE, message = FALSE, cache = TRUE---------------------
+## ---- warning = FALSE, message = FALSE, cache = TRUE--------------------------
+set.seed(1234)
 sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                  SL_g = c("SL.glm","SL.mean"),
                  SL_Q = c("SL.glm","SL.mean"),
@@ -42,26 +43,17 @@ sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                  stratify = FALSE)
 sl_fit
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 SL.npreg
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
+## ---- cache = TRUE, message = FALSE-------------------------------------------
 npreg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     SL_g = "SL.npreg", SL_Q = "SL.npreg",
                     SL_gr = "SL.npreg", SL_Qr = "SL.npreg",
                     stratify = TRUE)
 npreg_fit
 
-## ---- message = FALSE, cache = TRUE--------------------------------------
-repeated_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                 SL_g = c("SL.glm", "SL.step.interaction", "SL.mean"),
-                 SL_Q = c("SL.glm", "SL.step.interaction", "SL.mean"),
-                 SL_gr = c("SL.glm", "SL.earth"),
-                 SL_Qr = c("SL.glm", "SL.earth"),
-                 stratify = FALSE, n_SL = 5)
-repeated_sl_fit
-
-## ---- message = FALSE----------------------------------------------------
+## ---- message = FALSE---------------------------------------------------------
 # outcome adaptive propensity score fit using glms
 adaptg_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                      glm_Q = ".^2", glm_g = "Q1W + Q0W",
@@ -73,7 +65,7 @@ adaptg_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                      SL_g = c("SL.glm", "SL.mean"),
                      adapt_g = TRUE)
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
+## ---- cache = TRUE, message = FALSE-------------------------------------------
 # fit a GLM for outcome regression outside of drtmle
 out_glm_fit <- glm(Y ~ . , data = data.frame(A = A, W), family = binomial())
 
@@ -106,7 +98,7 @@ out_fit2 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
 # should be the same as out_fit1, but re-ordered
 out_fit2
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
+## ---- cache = TRUE, message = FALSE-------------------------------------------
 # fit a GLM for propensity score outside of drtmle
 out_glm_fit <- glm(A ~ . , data = data.frame(W), family = binomial())
 
@@ -143,43 +135,81 @@ out_fit4 <- drtmle(W = W, A = A, Y = Y, family = binomial(),
 # should be the same as out_fit3, but re-ordered
 out_fit4
 
-## ------------------------------------------------------------------------
+## ---- show_targeted_se, cache = TRUE------------------------------------------
+glm_fit_uni_nontargeted_se <- 
+  drtmle(W = W, A = A, Y = Y, family = binomial(),
+         glm_g = "W1 + W2", glm_Q = "W1 + W2*A",
+         glm_gr = "Qn", glm_Qr = "gn", stratify = FALSE, 
+         targeted_se = FALSE)
+# compare to original call        
+list(
+  glm_fit_uni$drtmle$cov, # based on targeted OR
+  glm_fit_uni_nontargeted_se$drtmle$cov # untargeted OR
+)
+
+## ---- fit_w_full_cv, warning = FALSE, cache = TRUE----------------------------
+glm_fit_uni_cv <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                         glm_g = "W1 + W2", glm_Q = "W1 + W2*A",
+                         glm_gr = "Qn", glm_Qr = "gn",
+                         se_cv = "full", se_cvFolds = 2, stratify = FALSE,
+                         targeted_se = FALSE) # needed for this to work
+# compare variance to previously obtained
+list(glm_fit_uni$drtmle$cov, glm_fit_uni_cv$drtmle$cov)
+
+## ---- demo_pcv, cache = TRUE, warning = FALSE---------------------------------
+set.seed(1234)
+sl_fit_pcv <- drtmle(W = W, A = A, Y = Y, family = binomial(),
+                     SL_g = c("SL.glm","SL.mean"),
+                     SL_Q = c("SL.glm","SL.mean"),
+                     SL_gr = c("SL.glm", "SL.earth"),
+                     SL_Qr = c("SL.glm", "SL.earth"),
+                     stratify = FALSE,
+                     se_cv = "partial")
+# compare estimates
+# pt estimates should be same
+# variance should be larger for pcv
+list(
+  sl_fit, # no cv
+  sl_fit_pcv # partial cv
+)
+
+## -----------------------------------------------------------------------------
 ci(npreg_fit)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 ci(npreg_fit, contrast = c(1,-1))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 riskRatio <- list(f = function(eff){ log(eff) },
                   f_inv = function(eff){ exp(eff) },
                   h = function(est){ est[1]/est[2] },
                   fh_grad =  function(est){ c(1/est[1],-1/est[2]) })
 ci(npreg_fit, contrast = riskRatio)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 logitMean <- list(f = function(eff){ qlogis(eff) },
                   f_inv = function(eff){ plogis(eff) },
                   h = function(est){ est[1] },
                   fh_grad = function(est){ c(1/(est[1] - est[1]^2), 0) })
 ci(npreg_fit, contrast = logitMean)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 wald_test(npreg_fit, null = c(0.5, 0.6))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 wald_test(npreg_fit, contrast = c(1, -1))
 wald_test(npreg_fit, contrast = c(1, -1), null = 0.05)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 wald_test(npreg_fit, contrast = riskRatio, null = 1)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 DeltaA <- rbinom(n, 1, plogis(2 + W$W1))
 DeltaY <- rbinom(n, 1, plogis(2 + W$W2 + A))
 A[DeltaA == 0] <- NA
 Y[DeltaY == 0] <- NA
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 glm_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                        glm_g = list(DeltaA = "W1 + W2", A = "W1 + W2",
                                     DeltaY = "W1 + W2 + A"),
@@ -187,7 +217,7 @@ glm_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                        glm_gr = "Qn", family = binomial())
 glm_fit_wNAs
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          SL_g = list(DeltaA = "SL.glm", A = "SL.npreg",
                          DeltaY = c("SL.glm", "SL.mean", "SL.earth")),
@@ -195,7 +225,7 @@ mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          glm_gr = "Qn", family = binomial())
 mixed_fit_wNAs
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 # first regress indicator of missing A on W
 fit_DeltaA <- glm(DeltaA ~ . , data = W, family = binomial())
 
@@ -244,7 +274,7 @@ out_fit_ps <-  drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                       glm_gr = "Qn", family = binomial())
 out_fit_ps
 
-## ---- echo = FALSE, message = FALSE--------------------------------------
+## ---- echo = FALSE, message = FALSE-------------------------------------------
 library(drtmle)
 set.seed(1234)
 N <- 1e6
@@ -256,45 +286,45 @@ EY1 <- mean(Y1)
 EY0 <- mean(Y0)
 EY2 <- mean(Y2)
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
+## ---- cache = TRUE, message = FALSE-------------------------------------------
 set.seed(1234)
 n <- 200
 W <- data.frame(W1 = runif(n), W2 = rbinom(n, 1, 0.5))
 A <- rbinom(n, 2, plogis(W$W1 + W$W2))
 Y <- rbinom(n, 1, plogis(W$W1 + W$W2*A))
 
-## ---- cache = TRUE, message = FALSE--------------------------------------
+## ---- cache = TRUE, message = FALSE-------------------------------------------
 glm_fit_multiA <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          glm_g = "W1 + W2", glm_Q = "W1 + W2*A",
                          glm_gr = "Qn", glm_Qr = "gn",
                          family = binomial(), a_0 = c(0,1,2))
 glm_fit_multiA
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 ci(glm_fit_multiA)
 wald_test(glm_fit_multiA, null = c(0.4, 0.5, 0.6))
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 ci(glm_fit_multiA, contrast = c(-1, 1, 0))
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 ci(glm_fit_multiA, contrast = c(-1, 0, 1))
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 riskRatio_1v0 <- list(f = function(eff){ log(eff) },
                       f_inv = function(eff){ exp(eff) },
                       h = function(est){ est[2]/est[1] },
                       fh_grad =  function(est){ c(1/est[2], -1/est[1], 0) })
 ci(glm_fit_multiA, contrast = riskRatio_1v0)
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 riskRatio_2v0 <- list(f = function(eff){ log(eff) },
                       f_inv = function(eff){ exp(eff) },
                       h = function(est){ est[3]/est[1] },
                       fh_grad =  function(est){ c(0, -1/est[1], 1/est[3]) })
 ci(glm_fit_multiA, contrast = riskRatio_2v0)
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 cv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     SL_g = c("SL.glm", "SL.glm.interaction", "SL.earth"),
                     SL_Q = c("SL.glm", "SL.glm.interaction", "SL.earth"),
@@ -303,7 +333,7 @@ cv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                     stratify = FALSE, cvFolds = 2, a_0 = c(0, 1, 2))
 cv_sl_fit
 
-## ---- cache = TRUE, message = FALSE, eval = FALSE------------------------
+## ---- cache = TRUE, message = FALSE, eval = FALSE-----------------------------
 #  ## Commented out to avoid build errors
 #  # library(future.batchtools)
 #  # library(parallel)
@@ -316,14 +346,14 @@ cv_sl_fit
 #  #                      SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
 #  #                      SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
 #  #                      stratify = FALSE, a_0 = c(0,1,2),
-#  #                      cvFolds = 2, parallel = TRUE)
+#  #                      cvFolds = 2, use_future = TRUE)
 
-## ---- cache = TRUE-------------------------------------------------------
+## ---- cache = TRUE------------------------------------------------------------
 npreg_iptw_multiA <- adaptive_iptw(W = W, A = A, Y = Y, stratify = FALSE,
                                    SL_g = "SL.npreg", SL_Qr = "SL.npreg",
                                    family = binomial(), a_0 = c(0, 1, 2))
 npreg_iptw_multiA
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 sessionInfo()
 
