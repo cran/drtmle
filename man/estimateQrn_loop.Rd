@@ -4,22 +4,8 @@
 \alias{estimateQrn_loop}
 \title{estimateQrn_loop}
 \usage{
-estimateQrn_loop(
-  validRows,
-  Y,
-  A,
-  W,
-  DeltaA,
-  DeltaY,
-  Qn,
-  gn,
-  SL_Qr,
-  glm_Qr,
-  family,
-  a_0,
-  returnModels,
-  use_future
-)
+estimateQrn_loop(validRows, Y, A, W, DeltaA, DeltaY, Qn, gn, SL_Qr, glm_Qr,
+  family, a_0, returnModels, use_future)
 }
 \arguments{
 \item{validRows}{A \code{list} of length \code{cvFolds} containing the row

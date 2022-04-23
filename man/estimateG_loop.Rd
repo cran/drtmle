@@ -4,25 +4,9 @@
 \alias{estimateG_loop}
 \title{estimateG_loop}
 \usage{
-estimateG_loop(
-  validRows,
-  A,
-  W,
-  DeltaA,
-  DeltaY,
-  tolg,
-  verbose,
-  stratify,
-  returnModels,
-  SL_g,
-  glm_g,
-  a_0,
-  Qn,
-  adapt_g,
-  use_future,
-  se_cv = "none",
-  se_cvFolds = 10
-)
+estimateG_loop(validRows, A, W, DeltaA, DeltaY, tolg, verbose, stratify,
+  returnModels, SL_g, glm_g, a_0, Qn, adapt_g, use_future, se_cv = "none",
+  se_cvFolds = 10)
 }
 \arguments{
 \item{validRows}{A \code{list} of length \code{cvFolds} containing the row
@@ -71,17 +55,17 @@ to outcome regression.}
 
 \item{use_future}{Should \code{future} be used for parallelization?}
 
-\item{se_cv}{Should cross-validated nuisance parameter estimates be used 
-for computing standard errors? 
-Options are \code{"none"} = no cross-validation is performed; \code{"partial"} = 
-only applicable if Super Learner is used for nuisance parameter estimates; 
-\code{"full"} = full cross-validation is performed. See vignette for further 
+\item{se_cv}{Should cross-validated nuisance parameter estimates be used
+for computing standard errors?
+Options are \code{"none"} = no cross-validation is performed; \code{"partial"} =
+only applicable if Super Learner is used for nuisance parameter estimates;
+\code{"full"} = full cross-validation is performed. See vignette for further
 details. Ignored if \code{cvFolds > 1}, since then
-cross-validated nuisance parameter estimates are used by default and it is 
+cross-validated nuisance parameter estimates are used by default and it is
 assumed that you want full cross-validated standard errors.}
 
 \item{se_cvFolds}{If cross-validated nuisance parameter estimates are used
-to compute standard errors, how many folds should be used in this computation. 
+to compute standard errors, how many folds should be used in this computation.
 If \code{se_cv = "partial"}, then this option sets the number of folds used
 by the \code{SuperLearner} fitting procedure.}
 }

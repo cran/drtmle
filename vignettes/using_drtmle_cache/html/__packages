@@ -4,10 +4,5 @@ nnls
 SuperLearner
 nloptr
 quadprog
-plotrix
-TeachingDemos
-plotmo
-earth
-future
-future.batchtools
-Formula
+foreach
+gam

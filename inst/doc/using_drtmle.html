@@ -202,7 +202,7 @@ Atlanta, Georgia, 30322, U.S.A.<br />
 \psi_0(a) = E_0\{\bar{Q}(a,W)\} = \int \bar{Q}_0(a,w) dQ_{W,0}(w) \ , \
 \mbox{for} \ a = 0,1 \ ,
 \label{parameterDef}
-\end{equation}\]</span> where <span class="math inline">\(\bar{Q}_0(a,w)=E_0 \left(Y \mid A=a, W=w\right)\)</span> is the so-called outcome regression and <span class="math inline">\(Q_W(w)=Pr_0\left(W\leq w\right)\)</span> is the distribution function of the covariates. The value <span class="math inline">\(\psi_0(a)\)</span> represents the marginal (i.e., population-level)treatment-specific average outcome, hereafter referred to as the <em>marginal mean</em> under treatment <span class="math inline">\(A=a\)</span>. The marginal effect of the treatment on the outcome can be assessed by comparing marginal means under different treatment levels. For example, the average treatment effect is often defined as <span class="math inline">\(\psi_0 := \psi_0(1) - \psi_0(0)\)</span>. Under additional assumptions, these parameters have richer interpretations as mean counterfactual outcomes under the different treatments and contrasts between these means define causal effects.</p>
+\end{equation}\]</span>erDef} \end{equation} where <span class="math inline">\(\bar{Q}_0(a,w)=E_0 \left(Y \mid A=a, W=w\right)\)</span> is the so-called outcome regression and <span class="math inline">\(Q_W(w)=Pr_0\left(W\leq w\right)\)</span> is the distribution function of the covariates. The value <span class="math inline">\(\psi_0(a)\)</span> represents the marginal (i.e., population-level)treatment-specific average outcome, hereafter referred to as the <em>marginal mean</em> under treatment <span class="math inline">\(A=a\)</span>. The marginal effect of the treatment on the outcome can be assessed by comparing marginal means under different treatment levels. For example, the average treatment effect is often defined as <span class="math inline">\(\psi_0 := \psi_0(1) - \psi_0(0)\)</span>. Under additional assumptions, these parameters have richer interpretations as mean counterfactual outcomes under the different treatments and contrasts between these means define causal effects.</p>
 </div>
 <div id="g-computation-estimators" class="section level2">
 <h2>G-computation estimators </h2>
@@ -325,24 +325,24 @@ g_{r,n,2}^*(a \mid W_i) \ \{Y_i - \bar{Q}_n^*(a,W_i)\} = 0 \ ,
 <div id="using-superlearner-to-estimate-regressions" class="section level3">
 <h3>Using <code>SuperLearner</code> to estimate regressions</h3>
 <p>Super learning is a loss-based ensemble machine learning technique <span class="citation">(van der Laan, Polley, and Hubbard 2007)</span> that is a generalization of stacking and stacked regression <span class="citation">(Wolpert 1992)</span>breiman:1996:ml}. The user specifies many potential candidate regression estimators, referred to as a <em>library</em> of candidate estimators, and the super learner algorithm estimates the convex combination of regression estimators that minimizes <span class="math inline">\(V\)</span>-fold cross-validated risk based on a user-selected loss function. Oracle inequalities show that the super learner estimate performs essentially as well as the unknown best convex combination of the candidate estimators <span class="citation">(Vaart, Dudoit, and van der Laan 2006)</span>. Thus, the methodology may be seen as an asymptotically optimal way of performing estimator selection. Practically, the super learner provides the best chance for obtaining a consistent estimator for both the OR and PS, and thereby an efficient estimator of the marginal means of interest.</p>
-<p>Super learning is implemented in the R package <code>SuperLearner</code> <span class="citation">(Polley et al. 2017)</span> and <code>drtmle</code> provides the option to utilize super learning for estimation of the OR, PS, and reduced-dimension regressions via the <code>SL_Q</code>, <code>SL_g</code>, <code>SL_Qr</code>, and <code>SL_gr</code> options. When calling <code>drtmle</code> either the generalized linear model options for regression modeling or the super learner options should be invoked. If both are called, the function will default to the super learner option. The inputs to the super learner options are passed to the <code>SL.library</code> argument of the <code>SuperLearner</code> function of the <code>SuperLearner</code> package. We refer readers to the <code>SuperLearner</code> help file for information on how to properly specify a super learner library. In the code below, we illustrate a call to <code>drtmle</code> with a relatively simple library. For the OR and PS, the library includes a main-terms generalized linear model (via the function <code>SL.glm</code> from <code>SuperLearner</code>) and an unadjusted generalized linear model (<code>SL.mean</code>). For the reduced dimension regressions we use a super learner library with a main terms generalized linear model (<code>SL.glm</code>) and adaptive regression splines (<code>SL.earth</code>, which utilizes the <code>earth</code> package <span class="citation">(Trevor Hastie and Thomas Lumley’s leaps wrapper. 2018)</span>).</p>
+<p>Super learning is implemented in the R package <code>SuperLearner</code> <span class="citation">(Polley et al. 2017)</span> and <code>drtmle</code> provides the option to utilize super learning for estimation of the OR, PS, and reduced-dimension regressions via the <code>SL_Q</code>, <code>SL_g</code>, <code>SL_Qr</code>, and <code>SL_gr</code> options. When calling <code>drtmle</code> either the generalized linear model options for regression modeling or the super learner options should be invoked. If both are called, the function will default to the super learner option. The inputs to the super learner options are passed to the <code>SL.library</code> argument of the <code>SuperLearner</code> function of the <code>SuperLearner</code> package. We refer readers to the <code>SuperLearner</code> help file for information on how to properly specify a super learner library. In the code below, we illustrate a call to <code>drtmle</code> with a relatively simple library. For the OR and PS, the library includes a main-terms generalized linear model (via the function <code>SL.glm</code> from <code>SuperLearner</code>) and an unadjusted generalized linear model (<code>SL.mean</code>). For the reduced dimension regressions we use a super learner library with a main terms generalized linear model (<code>SL.glm</code>) and regression splines (<code>SL.gam</code>, which utilizes the <code>gam</code> package <span class="citation">(Hastie 2017)</span>).</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1234</span>)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>sl_fit <span class="ot">&lt;-</span> <span class="fu">drtmle</span>(<span class="at">W =</span> W, <span class="at">A =</span> A, <span class="at">Y =</span> Y, <span class="at">family =</span> <span class="fu">binomial</span>(),</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_g =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>,<span class="st">&quot;SL.mean&quot;</span>),</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_Q =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>,<span class="st">&quot;SL.mean&quot;</span>),</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_gr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_Qr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_gr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">SL_Qr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">stratify =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>sl_fit</span></code></pre></div>
 <pre><code>## $est
 ##            
-## 1 0.7121870
-## 0 0.5368986
+## 1 0.7109740
+## 0 0.5381819
 ## 
 ## $cov
 ##               1             0
-## 1  1.718700e-03 -7.664583e-07
-## 0 -7.664583e-07  4.154017e-03</code></pre>
+## 1  1.737709e-03 -5.954220e-06
+## 0 -5.954220e-06  4.142052e-03</code></pre>
 <p>The <code>drtmle</code> package also allows users to pass in their own functions for estimating regression parameters via the <code>SL_</code> options. These functions must be formatted properly for compatibility with <code>drtmle</code>. The necessary formatting is identical the formatting required for writing a <code>SuperLearner</code> wrapper (see <code>SuperLearner::write.SL.template()</code>). The <code>drtmle</code> package includes <code>SL.npreg</code>, which is an example of how a user can specify a function for estimating regression parameters. This functions fits a kernel regression estimator using the <code>np</code> package <span class="citation">(Hayfield and Racine 2008)</span>. Below we show the source code for this function.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>SL.npreg</span></code></pre></div>
 <pre><code>## function (Y, X, newX, family = gaussian(), obsWeights = rep(1, 
@@ -364,7 +364,7 @@ g_{r,n,2}^*(a \mid W_i) \ \{Y_i - \bar{Q}_n^*(a,W_i)\} = 0 \ ,
 ##     out &lt;- list(pred = pred, fit = fit)
 ##     return(out)
 ## }
-## &lt;bytecode: 0x7ffdf72e1668&gt;
+## &lt;bytecode: 0x7fa232faed60&gt;
 ## &lt;environment: namespace:drtmle&gt;</code></pre>
 <p>In the above code, we see that a user-specified function should have options <code>Y, X, newX, family, obsWeights, ...</code>, along with other options specific to the function. The option <code>Y</code> corresponds to the outcome of the regression and <code>X</code> to the variables onto which the outcome is regressed. The option <code>newX</code> should be of the same class and dimension as <code>X</code> and is meant to contain new values of variables at which to evaluate the regression fit. The <code>family</code> and <code>obsWeights</code> options are not strictly necessary (indeed, they are not used by <code>SL.npreg</code>), they are useful to include if one wishes to utilize the function as part of a super learner library. The <code>SL.npreg</code> function proceeds by checking whether there is sufficient variation in <code>Y</code> to even both fitting the kernel regression (as specified by option <code>rangeThresh</code>), and if so, fits a kernel regression with cross-validated bandwidth selection via the <code>npregbw</code> function. The output is then formatted in a specific way so that <code>drtmle</code> is able to retrieve the appropriate objects from the fitted regression. In particular the output should be a list with named objects <code>pred</code> and <code>fit</code>; the former including predictions made from the fitted regression on <code>newX</code>, the latter including any information that may be needed to predict new values based on the fitted object. A class is assigned to the <code>fit</code> object, so that an S3 <code>predict</code> method may later be used to predict new values based on the fitted regression object. The user must also specify this <code>predict</code> method. Use <code>drtmle:::predict.SL.npreg</code> to view the simple <code>predict</code> method for <code>SL.npreg</code>.</p>
 <p>In the code below, we demonstrate a call to <code>drtmle</code> with <code>SL.npreg</code> used to estimate each nuisance parameter. Here, we also illustrate the use of <code>stratify = TRUE</code>, which fits a separate kernel regression of <span class="math inline">\(Y\)</span> onto <span class="math inline">\(W\)</span> in observations with <span class="math inline">\(A = 1\)</span> and <span class="math inline">\(A = 0\)</span>.</p>
@@ -595,8 +595,8 @@ D^*(\bar{Q}_0, g_0, Q_{W,0})(O_i) = \frac{I(A_i = 1)}{g_0(1 \mid W_i)} \{ Y_i - 
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>sl_fit_pcv <span class="ot">&lt;-</span> <span class="fu">drtmle</span>(<span class="at">W =</span> W, <span class="at">A =</span> A, <span class="at">Y =</span> Y, <span class="at">family =</span> <span class="fu">binomial</span>(),</span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_g =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>,<span class="st">&quot;SL.mean&quot;</span>),</span>
 <span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_Q =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>,<span class="st">&quot;SL.mean&quot;</span>),</span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_gr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_Qr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_gr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">SL_Qr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
 <span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>                     <span class="at">stratify =</span> <span class="cn">FALSE</span>,</span>
 <span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>                     <span class="at">se_cv =</span> <span class="st">&quot;partial&quot;</span>)</span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="co"># compare estimates</span></span>
@@ -609,25 +609,25 @@ D^*(\bar{Q}_0, g_0, Q_{W,0})(O_i) = \frac{I(A_i = 1)}{g_0(1 \mid W_i)} \{ Y_i - 
 <pre><code>## [[1]]
 ## $est
 ##            
-## 1 0.7121870
-## 0 0.5368986
+## 1 0.7109740
+## 0 0.5381819
 ## 
 ## $cov
 ##               1             0
-## 1  1.718700e-03 -7.664583e-07
-## 0 -7.664583e-07  4.154017e-03
+## 1  1.737709e-03 -5.954220e-06
+## 0 -5.954220e-06  4.142052e-03
 ## 
 ## 
 ## [[2]]
 ## $est
 ##            
-## 1 0.7121870
-## 0 0.5368986
+## 1 0.7109740
+## 0 0.5381819
 ## 
 ## $cov
 ##               1             0
-## 1  1.813255e-03 -1.183808e-05
-## 0 -1.183808e-05  4.300791e-03</code></pre>
+## 1  1.818141e-03 -1.846086e-05
+## 0 -1.846086e-05  4.332436e-03</code></pre>
 </div>
 </div>
 <div id="confidence-intervals" class="section level2">
@@ -729,10 +729,10 @@ g_0(a \mid w) &amp;= Pr_0(\Delta_A = 1, \Delta_A A = a, \Delta_Y = 1 \mid W = w)
 ##               1             0
 ## 1  1.836839e-03 -2.380141e-05
 ## 0 -2.380141e-05  4.917920e-03</code></pre>
-<p>It is possible to mix generalized linear models and super learning when fitting each of the components of the PS. In the below example we use the wrapper function <code>SL.glm</code>, which fits a main terms logistic regression, to fit the regression of <span class="math inline">\(\Delta_A\)</span> on <span class="math inline">\(W\)</span>, use <code>SL.npreg</code> to fit the regression of <span class="math inline">\(A\)</span> on <span class="math inline">\(W\)</span>, and use a super learner with library <code>SL.glm</code>, <code>SL.mean</code>, and <code>SL.earth</code> to fit the regression of <span class="math inline">\(Delta_Y\)</span> on <span class="math inline">\(W\)</span> and <span class="math inline">\(A\)</span>.</p>
+<p>It is possible to mix generalized linear models and super learning when fitting each of the components of the PS. In the below example we use the wrapper function <code>SL.glm</code>, which fits a main terms logistic regression, to fit the regression of <span class="math inline">\(\Delta_A\)</span> on <span class="math inline">\(W\)</span>, use <code>SL.npreg</code> to fit the regression of <span class="math inline">\(A\)</span> on <span class="math inline">\(W\)</span>, and use a super learner with library <code>SL.glm</code>, <code>SL.mean</code>, and <code>SL.gam</code> to fit the regression of <span class="math inline">\(Delta_Y\)</span> on <span class="math inline">\(W\)</span> and <span class="math inline">\(A\)</span>.</p>
 <div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>mixed_fit_wNAs <span class="ot">&lt;-</span> <span class="fu">drtmle</span>(<span class="at">W =</span> W, <span class="at">A =</span> A, <span class="at">Y =</span> Y, <span class="at">stratify =</span> <span class="cn">FALSE</span>,</span>
 <span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>                         <span class="at">SL_g =</span> <span class="fu">list</span>(<span class="at">DeltaA =</span> <span class="st">&quot;SL.glm&quot;</span>, <span class="at">A =</span> <span class="st">&quot;SL.npreg&quot;</span>,</span>
-<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">DeltaY =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.mean&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>)),</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">DeltaY =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.mean&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>)),</span>
 <span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">glm_Q =</span> <span class="st">&quot;W1 + W2*A&quot;</span>, <span class="at">glm_Qr =</span> <span class="st">&quot;gn&quot;</span>,</span>
 <span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>                         <span class="at">glm_gr =</span> <span class="st">&quot;Qn&quot;</span>, <span class="at">family =</span> <span class="fu">binomial</span>())</span>
 <span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>mixed_fit_wNAs</span></code></pre></div>
@@ -877,23 +877,23 @@ g_0(a \mid w) &amp;= Pr_0(\Delta_A = 1, \Delta_A A = a, \Delta_Y = 1 \mid W = w)
 <h2>Cross-validated regression estimates</h2>
 <p>When considering adaptive estimation techniques, one runs the risk of overfitting the initial regressions. While the cross validation used by super learning attempts to guard against overfitting, there are no guarantees in finite-samples. To definitively avoid such overfitting, one can use cross-validated estimates of the regression parameters. Theoretically, the use of cross-validated regression weakens the assumptions necessary to achieve asymptotic normality <span class="citation">(Zheng and van der Laan 2010)</span>. This is true of the regular TMLE and AIPTW, as well as of the TMLE estimator with doubly-robust inference. The <code>drtmle</code> function implements cross-validated estimation of the regression parameters through the <code>cvFolds</code> option, as shown in the code below, where we continue with the multi-level treatment example.</p>
 <div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>cv_sl_fit <span class="ot">&lt;-</span> <span class="fu">drtmle</span>(<span class="at">W =</span> W, <span class="at">A =</span> A, <span class="at">Y =</span> Y, <span class="at">family =</span> <span class="fu">binomial</span>(),</span>
-<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_g =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.glm.interaction&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
-<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_Q =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.glm.interaction&quot;</span>, <span class="st">&quot;SL.earth&quot;</span>),</span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_g =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.glm.interaction&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_Q =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.glm.interaction&quot;</span>, <span class="st">&quot;SL.gam&quot;</span>),</span>
 <span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_gr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.mean&quot;</span>),</span>
 <span id="cb65-5"><a href="#cb65-5" aria-hidden="true" tabindex="-1"></a>                    <span class="at">SL_Qr =</span> <span class="fu">c</span>(<span class="st">&quot;SL.glm&quot;</span>, <span class="st">&quot;SL.mean&quot;</span>),</span>
 <span id="cb65-6"><a href="#cb65-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">stratify =</span> <span class="cn">FALSE</span>, <span class="at">cvFolds =</span> <span class="dv">2</span>, <span class="at">a_0 =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">2</span>))</span>
 <span id="cb65-7"><a href="#cb65-7" aria-hidden="true" tabindex="-1"></a>cv_sl_fit</span></code></pre></div>
 <pre><code>## $est
 ##            
-## 0 0.4708198
-## 1 0.7383167
-## 2 0.7858091
+## 0 0.5018057
+## 1 0.7366243
+## 2 0.7882366
 ## 
 ## $cov
-##               0             1             2
-## 0  9.582548e-03 -5.877224e-05 -6.475948e-06
-## 1 -5.877224e-05  2.220022e-03  4.768899e-05
-## 2 -6.475948e-06  4.768899e-05  2.640170e-03</code></pre>
+##               0             1            2
+## 0  1.193714e-02 -7.941656e-06 1.535563e-05
+## 1 -7.941656e-06  2.235493e-03 6.137198e-05
+## 2  1.535563e-05  6.137198e-05 2.758834e-03</code></pre>
 <p>Cross-validation may significantly increase the computation time necessary for running <code>drtmle</code>. Parallelized regression fitting is available by setting the option <code>use_future = TRUE</code>. Since, internally, all computations are carried out using futures (with the API provided by the “future” R package), setting this option amounts only to parallelizing with futures <span class="citation">(Bengtsson 2017a)</span> via <code>future.apply::lapply</code>. Selecting this option results in parallelization of the estimation of the OR, PS, and reduced-dimension regressions.</p>
 <p>If no adjustments are made prior to invoking the <code>drtmle</code> function, futures are computed sequentially. It is up to the user to specify appropriate system-specific future back-ends that may better suit their problem (e.g., using the <code>future.batchtools</code> package <span class="citation">(Bengtsson 2017b)</span>). Below we demonstrate registration using an ad-hoc cluster on the local system. The choice of back-end is flexible, and submission of the job to a wide variety of schedulers (e.g., SLURM, TORQUE, etc.) is also permitted. Interested readers are invited to consult the documentation of the <code>future.batchtools</code> package for further information.</p>
 <div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Commented out to avoid build errors</span></span>
@@ -903,10 +903,10 @@ g_0(a \mid w) &amp;= Pr_0(\Delta_A = 1, \Delta_A A = a, \Delta_Y = 1 \mid W = w)
 <span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a><span class="co"># plan(cluster, workers = cl)</span></span>
 <span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a><span class="co"># clusterEvalQ(cl, library(&quot;SuperLearner&quot;))</span></span>
 <span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a><span class="co"># pcv_sl_fit &lt;- drtmle(W = W, A = A, Y = Y, family = binomial(),</span></span>
-<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_g = c(&quot;SL.glm&quot;, &quot;SL.glm.interaction&quot;,&quot;SL.earth&quot;),</span></span>
-<span id="cb67-9"><a href="#cb67-9" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_Q = c(&quot;SL.glm&quot;, &quot;SL.glm.interaction&quot;,&quot;SL.earth&quot;),</span></span>
-<span id="cb67-10"><a href="#cb67-10" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_gr = c(&quot;SL.glm&quot;, &quot;SL.earth&quot;, &quot;SL.mean&quot;),</span></span>
-<span id="cb67-11"><a href="#cb67-11" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_Qr = c(&quot;SL.glm&quot;, &quot;SL.earth&quot;, &quot;SL.mean&quot;),</span></span>
+<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_g = c(&quot;SL.glm&quot;, &quot;SL.glm.interaction&quot;,&quot;SL.gam&quot;),</span></span>
+<span id="cb67-9"><a href="#cb67-9" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_Q = c(&quot;SL.glm&quot;, &quot;SL.glm.interaction&quot;,&quot;SL.gam&quot;),</span></span>
+<span id="cb67-10"><a href="#cb67-10" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_gr = c(&quot;SL.glm&quot;, &quot;SL.gam&quot;, &quot;SL.mean&quot;),</span></span>
+<span id="cb67-11"><a href="#cb67-11" aria-hidden="true" tabindex="-1"></a><span class="co">#                      SL_Qr = c(&quot;SL.glm&quot;, &quot;SL.gam&quot;, &quot;SL.mean&quot;),</span></span>
 <span id="cb67-12"><a href="#cb67-12" aria-hidden="true" tabindex="-1"></a><span class="co">#                      stratify = FALSE, a_0 = c(0,1,2),</span></span>
 <span id="cb67-13"><a href="#cb67-13" aria-hidden="true" tabindex="-1"></a><span class="co">#                      cvFolds = 2, use_future = TRUE)</span></span></code></pre></div>
 </div>
@@ -944,51 +944,60 @@ W_i)} \ \{ I(A_i = a) - g_n(a \mid W = W_i)\} = 0 \ ,\]</span> then the IPTW est
 </div>
 <div id="discussion" class="section level1">
 <h1>Discussion</h1>
-<p>The <code>drtmle</code> package was designed to provide a user-friendly implementation of the TMLE algorithm that facilitates doubly-robust inference about marginal means and average treatment effects. While the theory underlying doubly-robust inference is complex, the implementation of the methods only requires users to provide the data and specify how to estimate regressions. While estimation of the OR and PS is familiar to those familiar with causal inference-related estimation, the reduced-dimension regressions may appear strange. Indeed, it is difficult to provide intuition for these parameters and more difficult to determine what scientific background knowledge might guide users in how to estimate these regression parameters. Therefore, we recommended estimating these quantities adaptively, e.g., with the super learner. The super learner library should contain several relatively smooth estimators such as <code>SL.mean</code>, <code>SL.glm</code>, and <code>SL.gam</code>. In particular, including <code>SL.mean</code> (an unadjusted generalized linear model) may be important due to the fact that, when the OR and PS are consistently estimated, the reduced-dimension regressions are identically equal to zero. Thus, this unadjusted regression estimator may do a good job estimating the reduced-dimension regressions in situations where the OR and PS are estimated well. In addition to relatively smooth estimators, we recommend additionally including several adaptive estimators such as <code>SL.npreg</code> or <code>SL.earth</code>.</p>
+<p>The <code>drtmle</code> package was designed to provide a user-friendly implementation of the TMLE algorithm that facilitates doubly-robust inference about marginal means and average treatment effects. While the theory underlying doubly-robust inference is complex, the implementation of the methods only requires users to provide the data and specify how to estimate regressions. While estimation of the OR and PS is familiar to those familiar with causal inference-related estimation, the reduced-dimension regressions may appear strange. Indeed, it is difficult to provide intuition for these parameters and more difficult to determine what scientific background knowledge might guide users in how to estimate these regression parameters. Therefore, we recommended estimating these quantities adaptively, e.g., with the super learner. The super learner library should contain several relatively smooth estimators such as <code>SL.mean</code>, <code>SL.glm</code>, and <code>SL.gam</code>. In particular, including <code>SL.mean</code> (an unadjusted generalized linear model) may be important due to the fact that, when the OR and PS are consistently estimated, the reduced-dimension regressions are identically equal to zero. Thus, this unadjusted regression estimator may do a good job estimating the reduced-dimension regressions in situations where the OR and PS are estimated well. In addition to relatively smooth estimators, we recommend additionally including several adaptive estimators such as <code>SL.npreg</code> or <code>SL.gam</code>.</p>
 <p>Planned extensions of the <code>drtmle</code> package include extensions of longitudinal settings involving treatments at multiple time points and inclusion of the collaborative targeted maximum likelihood estimator (CTMLE) of van der Laan (2014) that also facilitates collaborative doubly-robust inference.</p>
 </div>
 <div id="session-info" class="section level1">
 <h1>Session Info</h1>
 <div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
-<pre><code>## R version 4.0.3 (2020-10-10)
+<pre><code>## R version 4.1.0 (2021-05-18)
 ## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS High Sierra 10.13.4
+## Running under: macOS Big Sur 10.16
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] C/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
-## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## [1] splines   stats     graphics  grDevices utils     datasets  methods  
+## [8] base     
 ## 
 ## other attached packages:
-##  [1] future.batchtools_0.10.0 future_1.21.0            earth_5.3.0             
-##  [4] plotmo_3.6.0             Formula_1.2-4            TeachingDemos_2.12      
-##  [7] plotrix_3.8-1            quadprog_1.5-8           nloptr_1.2.2.2          
-## [10] SuperLearner_2.0-26      nnls_1.4                 drtmle_1.1.0            
+## [1] quadprog_1.5-8      nloptr_1.2.2.2      SuperLearner_2.0-28
+## [4] gam_1.20            foreach_1.5.1       nnls_1.4           
+## [7] drtmle_1.1.1       
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] progress_1.2.2       xfun_0.21            bslib_0.2.4.9000    
-##  [4] listenv_0.8.0        lattice_0.20-41      vctrs_0.3.6         
-##  [7] htmltools_0.5.1.9000 yaml_2.2.1           rlang_0.4.10        
-## [10] jquerylib_0.1.3      withr_2.4.1          rappdirs_0.3.3      
-## [13] matrixStats_0.58.0   lifecycle_1.0.0      stringr_1.4.0       
-## [16] MatrixModels_0.4-1   codetools_0.2-18     evaluate_0.14       
-## [19] knitr_1.31           SparseM_1.81         batchtools_0.9.15   
-## [22] quantreg_5.85        parallel_4.0.3       Rcpp_1.0.6          
-## [25] conquer_1.0.2        backports_1.2.1      checkmate_2.0.0     
-## [28] jsonlite_1.7.2       parallelly_1.23.0    brew_1.0-6          
-## [31] hms_1.0.0            digest_0.6.27        stringi_1.5.3       
-## [34] grid_4.0.3           tools_4.0.3          magrittr_2.0.1      
-## [37] base64url_1.4        sass_0.3.1.9000      np_0.60-10          
-## [40] pkgconfig_2.0.3      crayon_1.4.1         future.apply_1.7.0  
-## [43] ellipsis_0.3.1       Matrix_1.3-2         prettyunits_1.1.1   
-## [46] data.table_1.14.0    rmarkdown_2.7        cubature_2.0.4.1    
-## [49] R6_2.5.0             globals_0.14.0       boot_1.3-27         
-## [52] compiler_4.0.3</code></pre>
+##  [1] sass_0.4.1           jsonlite_1.7.2       prodlim_2019.11.13  
+##  [4] bslib_0.3.1          stats4_4.1.0         np_0.60-11          
+##  [7] yaml_2.2.1           globals_0.14.0       ipred_0.9-12        
+## [10] pillar_1.6.2         lattice_0.20-44      quantreg_5.86       
+## [13] glue_1.4.2           pROC_1.18.0          digest_0.6.27       
+## [16] colorspace_2.0-2     recipes_0.1.17       htmltools_0.5.2     
+## [19] Matrix_1.3-3         plyr_1.8.6           timeDate_3043.102   
+## [22] conquer_1.2.1        pkgconfig_2.0.3      SparseM_1.81        
+## [25] listenv_0.8.0        caret_6.0-90         purrr_0.3.4         
+## [28] scales_1.1.1         gower_0.2.2          lava_1.6.10         
+## [31] cubature_2.0.4.2     MatrixModels_0.5-0   tibble_3.1.4        
+## [34] generics_0.1.1       ggplot2_3.3.5        ellipsis_0.3.2      
+## [37] withr_2.5.0          nnet_7.3-16          survival_3.2-11     
+## [40] magrittr_2.0.1       crayon_1.4.1         evaluate_0.14       
+## [43] future_1.23.0        fansi_0.5.0          parallelly_1.28.1   
+## [46] nlme_3.1-152         MASS_7.3-54          class_7.3-19        
+## [49] data.table_1.14.2    tools_4.1.0          matrixStats_0.61.0  
+## [52] lifecycle_1.0.0      stringr_1.4.0        munsell_0.5.0       
+## [55] compiler_4.1.0       jquerylib_0.1.4      rlang_0.4.11        
+## [58] grid_4.1.0           iterators_1.0.13     rmarkdown_2.9       
+## [61] boot_1.3-28          ModelMetrics_1.2.2.2 gtable_0.3.0        
+## [64] codetools_0.2-18     reshape2_1.4.4       R6_2.5.1            
+## [67] lubridate_1.8.0      knitr_1.33           dplyr_1.0.7         
+## [70] fastmap_1.1.0        future.apply_1.8.1   utf8_1.2.2          
+## [73] stringi_1.7.4        parallel_4.1.0       Rcpp_1.0.7          
+## [76] vctrs_0.3.8          rpart_4.1-15         tidyselect_1.1.1    
+## [79] xfun_0.25</code></pre>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-futurePackage" class="csl-entry">
 Bengtsson, Henrik. 2017a. <em><span class="nocase">future</span>: A Future <span>API</span> for <span>R</span></em>. https://cran.r-project.org/web/packages/future. <a href="https://github.com/HenrikBengtsson/future">https://github.com/HenrikBengtsson/future</a>.
@@ -998,6 +1007,9 @@ Bengtsson, Henrik. 2017a. <em><span class="nocase">future</span>: A Future <span
 </div>
 <div id="ref-benkeser:2017:biometrika" class="csl-entry">
 Benkeser, D, M Carone, M van der Laan, and P Gilbert. 2017. <span>“Doubly-Robust Nonparametric Inference on the Average Treatment Effect.”</span> <em>Biometrika</em>.
+</div>
+<div id="ref-gamPackage" class="csl-entry">
+Hastie, Trevor. 2017. <em><span class="nocase">gam</span>: Generalized Additive Models</em>. <a href="https://CRAN.R-project.org/package=gam">https://CRAN.R-project.org/package=gam</a>.
 </div>
 <div id="ref-npPackage" class="csl-entry">
 Hayfield, Tristen, and Jeffrey Racine. 2008. <span>“Nonparametric Econometrics: The Np Package.”</span> <em>Journal of Statistical Software</em> 27 (5). <a href="https://www.jstatsoft.org/v27/i05/">https://www.jstatsoft.org/v27/i05/</a>.
@@ -1019,9 +1031,6 @@ Robins, J, M Hernan, and B Brumback. 2000. <span>“Marginal Structural Models a
 </div>
 <div id="ref-robins:1994:jasa" class="csl-entry">
 Robins, J, A Rotnitzky, and L Zhao. 1994. <span>“Estimation of Regression Coefficients When Some Regressors Are Not Always Observed.”</span> <em>Journal of the American Statistical Association</em> 89 (427): 846–66. <a href="https://doi.org/10.1080/01621459.1994.10476818">https://doi.org/10.1080/01621459.1994.10476818</a>.
-</div>
-<div id="ref-earthPackage" class="csl-entry">
-Trevor Hastie, Stephen Milborrow. Derived from mda:mars by, and Rob Tibshirani. Uses Alan Miller’s Fortran utilities with Thomas Lumley’s leaps wrapper. 2018. <em><span class="nocase">earth</span>: Multivariate Adaptive Regression Splines</em>. <a href="https://CRAN.R-project.org/package=earth">https://CRAN.R-project.org/package=earth</a>.
 </div>
 <div id="ref-vdvaart:2006:statdec" class="csl-entry">
 Vaart, A van der, S Dudoit, and M van der Laan. 2006. <span>“Oracle Inequalities for Multi-Fold Cross-Validation.”</span> <em>Statistics and Decisions</em> 24 (3): 351–71. <a href="https://doi.org/10.1524/stnd.2006.24.3.351">https://doi.org/10.1524/stnd.2006.24.3.351</a>.

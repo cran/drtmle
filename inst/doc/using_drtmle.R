@@ -38,8 +38,8 @@ set.seed(1234)
 sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                  SL_g = c("SL.glm","SL.mean"),
                  SL_Q = c("SL.glm","SL.mean"),
-                 SL_gr = c("SL.glm", "SL.earth"),
-                 SL_Qr = c("SL.glm", "SL.earth"),
+                 SL_gr = c("SL.glm", "SL.gam"),
+                 SL_Qr = c("SL.glm", "SL.gam"),
                  stratify = FALSE)
 sl_fit
 
@@ -161,8 +161,8 @@ set.seed(1234)
 sl_fit_pcv <- drtmle(W = W, A = A, Y = Y, family = binomial(),
                      SL_g = c("SL.glm","SL.mean"),
                      SL_Q = c("SL.glm","SL.mean"),
-                     SL_gr = c("SL.glm", "SL.earth"),
-                     SL_Qr = c("SL.glm", "SL.earth"),
+                     SL_gr = c("SL.glm", "SL.gam"),
+                     SL_Qr = c("SL.glm", "SL.gam"),
                      stratify = FALSE,
                      se_cv = "partial")
 # compare estimates
@@ -220,7 +220,7 @@ glm_fit_wNAs
 ## ---- cache = TRUE------------------------------------------------------------
 mixed_fit_wNAs <- drtmle(W = W, A = A, Y = Y, stratify = FALSE,
                          SL_g = list(DeltaA = "SL.glm", A = "SL.npreg",
-                         DeltaY = c("SL.glm", "SL.mean", "SL.earth")),
+                         DeltaY = c("SL.glm", "SL.mean", "SL.gam")),
                          glm_Q = "W1 + W2*A", glm_Qr = "gn",
                          glm_gr = "Qn", family = binomial())
 mixed_fit_wNAs
@@ -326,8 +326,8 @@ ci(glm_fit_multiA, contrast = riskRatio_2v0)
 
 ## ---- cache = TRUE------------------------------------------------------------
 cv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-                    SL_g = c("SL.glm", "SL.glm.interaction", "SL.earth"),
-                    SL_Q = c("SL.glm", "SL.glm.interaction", "SL.earth"),
+                    SL_g = c("SL.glm", "SL.glm.interaction", "SL.gam"),
+                    SL_Q = c("SL.glm", "SL.glm.interaction", "SL.gam"),
                     SL_gr = c("SL.glm", "SL.mean"),
                     SL_Qr = c("SL.glm", "SL.mean"),
                     stratify = FALSE, cvFolds = 2, a_0 = c(0, 1, 2))
@@ -341,10 +341,10 @@ cv_sl_fit
 #  # plan(cluster, workers = cl)
 #  # clusterEvalQ(cl, library("SuperLearner"))
 #  # pcv_sl_fit <- drtmle(W = W, A = A, Y = Y, family = binomial(),
-#  #                      SL_g = c("SL.glm", "SL.glm.interaction","SL.earth"),
-#  #                      SL_Q = c("SL.glm", "SL.glm.interaction","SL.earth"),
-#  #                      SL_gr = c("SL.glm", "SL.earth", "SL.mean"),
-#  #                      SL_Qr = c("SL.glm", "SL.earth", "SL.mean"),
+#  #                      SL_g = c("SL.glm", "SL.glm.interaction","SL.gam"),
+#  #                      SL_Q = c("SL.glm", "SL.glm.interaction","SL.gam"),
+#  #                      SL_gr = c("SL.glm", "SL.gam", "SL.mean"),
+#  #                      SL_Qr = c("SL.glm", "SL.gam", "SL.mean"),
 #  #                      stratify = FALSE, a_0 = c(0,1,2),
 #  #                      cvFolds = 2, use_future = TRUE)
 

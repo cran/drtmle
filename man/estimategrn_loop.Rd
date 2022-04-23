@@ -4,23 +4,8 @@
 \alias{estimategrn_loop}
 \title{estimategrn_loop}
 \usage{
-estimategrn_loop(
-  validRows,
-  Y,
-  A,
-  W,
-  DeltaA,
-  DeltaY,
-  tolg,
-  Qn,
-  gn,
-  glm_gr,
-  SL_gr,
-  a_0,
-  reduction,
-  returnModels,
-  use_future
-)
+estimategrn_loop(validRows, Y, A, W, DeltaA, DeltaY, tolg, Qn, gn, glm_gr,
+  SL_gr, a_0, reduction, returnModels, use_future)
 }
 \arguments{
 \item{validRows}{A \code{list} of length \code{cvFolds} containing the row

@@ -1,4 +1,14 @@
-# drtmle 1.1.0 
+# drtmle 1.1.1
+
+* Version 1.1.1 released on GitHub and CRAN.
+* Major changes
+	* fixed bug in how multi-level treatment estimates are computed
+* Minor changes
+	* fixed small bugs that caused errors predicting from some super learner
+	wrapper functions.
+	* removed `earth` dependency to fix build errors
+
+# drtmle 1.1.0
 
 * Version 1.1.0 released on GitHub and CRAN.
 * Major changes

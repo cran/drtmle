@@ -4,24 +4,9 @@
 \alias{estimateG}
 \title{estimateG}
 \usage{
-estimateG(
-  A,
-  W,
-  DeltaY,
-  DeltaA,
-  SL_g,
-  glm_g,
-  a_0,
-  tolg,
-  stratify = FALSE,
-  validRows = NULL,
-  verbose = FALSE,
-  returnModels = FALSE,
-  Qn = NULL,
-  adapt_g = FALSE,
-  se_cv = "none",
-  se_cvFolds = 10
-)
+estimateG(A, W, DeltaY, DeltaA, SL_g, glm_g, a_0, tolg, stratify = FALSE,
+  validRows = NULL, verbose = FALSE, returnModels = FALSE, Qn = NULL,
+  adapt_g = FALSE, se_cv = "none", se_cvFolds = 10)
 }
 \arguments{
 \item{A}{A vector of binary treatment assignment (assumed to be equal to 0 or
@@ -68,17 +53,17 @@ in \code{a_0}. Only needed if \code{adapt_g = TRUE}.}
 \item{adapt_g}{A boolean indicating whether propensity score is adaptive
 to outcome regression.}
 
-\item{se_cv}{Should cross-validated nuisance parameter estimates be used 
-for computing standard errors? 
-Options are \code{"none"} = no cross-validation is performed; \code{"partial"} = 
-only applicable if Super Learner is used for nuisance parameter estimates; 
-\code{"full"} = full cross-validation is performed. See vignette for further 
+\item{se_cv}{Should cross-validated nuisance parameter estimates be used
+for computing standard errors?
+Options are \code{"none"} = no cross-validation is performed; \code{"partial"} =
+only applicable if Super Learner is used for nuisance parameter estimates;
+\code{"full"} = full cross-validation is performed. See vignette for further
 details. Ignored if \code{cvFolds > 1}, since then
-cross-validated nuisance parameter estimates are used by default and it is 
+cross-validated nuisance parameter estimates are used by default and it is
 assumed that you want full cross-validated standard errors.}
 
 \item{se_cvFolds}{If cross-validated nuisance parameter estimates are used
-to compute standard errors, how many folds should be used in this computation. 
+to compute standard errors, how many folds should be used in this computation.
 If \code{se_cv = "partial"}, then this option sets the number of folds used
 by the \code{SuperLearner} fitting procedure.}
 }

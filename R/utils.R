@@ -162,7 +162,7 @@ plot.drtmle <- function(x, nPoints = 500,
   # ------------------
   # plot Qrn fit
   # ------------------
-  if (!(class(x$QrnMod) == "NULL")) {
+  if (!inherits(x$QrnMod, "NULL")) {
     # number of fits (if no CV = 1, if CV > 1)
     nFit <- length(x$QrnMod)
     # xlim = range of gn
@@ -172,9 +172,9 @@ plot.drtmle <- function(x, nPoints = 500,
     # get predictions back for each Qrn fit
     fit_Qrn <- lapply(x$QrnMod, function(y) {
       newDat <- data.frame(gn = predP)
-      if ("glm" %in% class(y[[listInd]])) {
+      if (inherits(y[[listInd]], "glm")) {
         predict(y[[listInd]], newdata = newDat, type = "response")
-      } else if (class(y[[listInd]]) == "SuperLearner") {
+      } else if (inherits(y[[listInd]], "SuperLearner")) {
         pred <- predict(y[[listInd]], newdata = newDat)
         # get sl prediction if meta learning did not fail
         if (!all(y[[listInd]]$coef == 0)) {
@@ -206,7 +206,7 @@ plot.drtmle <- function(x, nPoints = 500,
   # ------------------
   # plot grn fit
   # ------------------
-  if (!(class(x$grnMod) == "NULL")) {
+  if (!inherits(x$grnMod, "NULL")) {
     # only plot if univariate reduction
     reduction <- as.list(x$call)$reduction
     if (is.null(reduction)) reduction <- "univariate"
@@ -218,9 +218,9 @@ plot.drtmle <- function(x, nPoints = 500,
       ## get fitted values of g_{n,r,1}
       fit_grn1 <- lapply(x$grnMod, function(y) {
         newDat <- data.frame(Qn = predP)
-        if ("glm" %in% class(y[[listInd]]$fm1)) {
+        if (inherits(y[[listInd]]$fm1, "glm")) {
           predict(y[[listInd]]$fm1, newdata = newDat, type = "response")
-        } else if (class(y[[listInd]]$fm1) == "SuperLearner") {
+        } else if (inherits(y[[listInd]]$fm1,  "SuperLearner")) {
           pred <- predict(y[[listInd]]$fm1, newdata = newDat)
           # get sl prediction if meta learning did not fail
           if (!all(y[[listInd]]$fm1$coef == 0)) {
@@ -253,9 +253,9 @@ plot.drtmle <- function(x, nPoints = 500,
       ## get fitted values of g_{n,r,2}
       fit_grn2 <- lapply(x$grnMod, function(y) {
         newDat <- data.frame(Qn = predP)
-        if ("glm" %in% class(y[[listInd]]$fm2)) {
+        if (inherits(y[[listInd]]$fm2, "glm")) {
           predict(y[[listInd]]$fm2, newdata = newDat, type = "response")
-        } else if (class(y[[listInd]]$fm2) == "SuperLearner") {
+        } else if (inherits(y[[listInd]]$fm2, "SuperLearner")) {
           pred <- predict(y[[listInd]]$fm2, newdata = newDat)
           # get sl prediction if meta learning did not fail
           if (!all(y[[listInd]]$fm2$coef == 0)) {
@@ -442,7 +442,7 @@ tmp_method.CC_LS <- function() {
       modZ <- Z[, -rmCols, drop = FALSE]
     }
     fit <- compute(x = modZ, y = Y, wt = obsWeights)
-    if (class(fit) != "error") {
+    if (!inherits(fit, "error")) {
       coef <- fit$solution
     } else {
       coef <- rep(0, ncol(Z))
@@ -452,7 +452,7 @@ tmp_method.CC_LS <- function() {
       warning("Some algorithms have weights of NA, setting to 0.")
       coef[is.na(coef)] <- 0
     }
-    if (class(fit) != "error") {
+    if (!inherits(fit, "error")) {
       if (anyDupCols | anyNACols) {
         ind <- c(seq_along(coef), rmCols - 0.5)
         coef <- c(coef, rep(0, length(rmCols)))
@@ -559,7 +559,7 @@ tmp_method.CC_nloglik <- function() {
     if (r$status < 1 || r$status > 4) {
       warning(r$message)
     }
-    if (class(r) != "error") {
+    if (!inherits(r, "error")) {
       coef <- r$solution
     } else {
       coef <- rep(0, ncol(Z))
@@ -616,6 +616,7 @@ average_ic_list <- function(ic_list){
 #' 
 #' @param fit_sl A fitted \code{SuperLearner} object with 
 #' \code{control$saveCVFitLibrary = TRUE}
+#' @param family Family of prediction model
 #' @param a_0 Treatment level to set. If \code{NULL}, assume this function
 #' is being used to get partially cross-validated propensity score predictions.
 #' @param W A \code{data.frame} of named covariates.
@@ -625,7 +626,7 @@ average_ic_list <- function(ic_list){
 #' computed the "easy" way, i.e., based just on the Z matrix from SuperLearner.
 #' This is possible for propensity score models when no missing data AND no 
 #' stratification. 
-partial_cv_preds <- function(fit_sl, a_0, W = NULL,
+partial_cv_preds <- function(fit_sl, a_0, W = NULL, family, 
                              include = NULL, easy = FALSE){
   n_algo <- length(fit_sl$cvRisk)
   n_folds <- length(fit_sl$validRows)
@@ -651,9 +652,9 @@ partial_cv_preds <- function(fit_sl, a_0, W = NULL,
       for(k in seq_len(n_algo)){
         # predict under a_0
         if(!is.null(a_0)){
-          rslt[ , k] <- predict(foldv_models[[k]], newdata = data.frame(A = a_0, W)[include,][foldv_ids,])
+          rslt[ , k] <- predict(foldv_models[[k]], family = family, newdata = data.frame(A = a_0, W)[include,][foldv_ids,])
         }else{
-          rslt[ , k] <- predict(foldv_models[[k]], newdata = W[include,][foldv_ids,])
+          rslt[ , k] <- predict(foldv_models[[k]], family = family, newdata = W[include,][foldv_ids,])
         }
       }
       rslt_list[[v]] <- rslt
